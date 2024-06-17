@@ -55,6 +55,7 @@ type QoS2 interface {
 	Topic
 	HandlePublishRec(pubrec *packets.Pubrec)
 	HandlePublishComp(pubcomp *packets.Pubcomp)
+	HandlePubRel(pubrel *packets.Pubrel)
 }
 
 func SplitShareAndNoShare(subPacket *packets.Subscribe) (shareSubscribe *packets.Subscribe, noShareSubscribe *packets.Subscribe) {

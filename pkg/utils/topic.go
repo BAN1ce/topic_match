@@ -22,10 +22,12 @@ func SplitTopic(topic string) []string {
 	return tmp
 }
 
+// nolint
 func HasWildcard(topic string) bool {
 	return strings.Contains(topic, "+") || strings.Contains(topic, "#")
 }
 
+// nolint
 func subQosMoreThan0(topics map[string]int32) bool {
 	for _, v := range topics {
 		if v > 0 {

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	app2 "github.com/BAN1ce/skyTree/app"
+	"github.com/BAN1ce/skyTree/config"
 	"github.com/BAN1ce/skyTree/logger"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
@@ -28,6 +29,8 @@ func main() {
 		app         = app2.NewApp()
 		ctx, cancel = context.WithCancel(context.Background())
 	)
+
+	config.SetConfig(config.NewConfig())
 	// FIXME move to other place
 	http.Handle("/metrics", promhttp.Handler())
 	go func() {

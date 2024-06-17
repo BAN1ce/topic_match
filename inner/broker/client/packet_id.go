@@ -1,4 +1,4 @@
-package utils
+package client
 
 import (
 	"fmt"
@@ -7,10 +7,6 @@ import (
 	"strconv"
 	"sync/atomic"
 )
-
-func GeneratePacketID() uint16 {
-	return uint16(rand.Intn(65535))
-}
 
 type PacketIDFactory struct {
 	id *atomic.Uint32
@@ -39,15 +35,15 @@ func (p *PacketIDFactory) ReadID() uint16 {
 	return uint16(p.id.Load())
 }
 
-func (p *PacketIDFactory) Generate() uint16 {
+func (p *PacketIDFactory) NextPacketID() uint16 {
 	var (
 		newID uint16
 	)
 	id := p.id.Add(1)
 	if id == 0x0000 {
-		return p.Generate()
+		return p.NextPacketID()
 	}
-	if id > 0x00FF {
+	if id == math.MaxUint16 {
 		newID = uint16(id >> 16)
 	} else {
 		newID = uint16(id)

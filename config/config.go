@@ -9,12 +9,30 @@ var (
 	nodeIDFlag = flag.Uint64("nodeID", 1, "node id")
 	httpPort   = flag.Int("httpPort", 9526, "http port")
 	brokerPort = flag.Int("brokerPort", 1883, "broker port")
+	cfg        *Config
 )
+
+func SetConfig(c *Config) {
+	cfg = c
+}
+
+func GetConfig() Config {
+	return *cfg
+}
 
 type Config struct {
 	Retry
 	TimeWheel
-	Tree
+	Broker *Broker
+}
+
+func NewConfig() *Config {
+	return &Config{
+		Retry:     GetRetry(),
+		TimeWheel: GetTimeWheel(),
+		Broker:    NewBroker(),
+	}
+
 }
 
 func GetPubMaxQos() uint8 {
@@ -44,8 +62,4 @@ func GetRetry() Retry {
 		MaxRetryCount: 3,
 		Interval:      3 * time.Second,
 	}
-}
-func (c Config) GetTree() Tree {
-	return c.Tree
-
 }

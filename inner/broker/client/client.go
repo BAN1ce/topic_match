@@ -7,6 +7,7 @@ import (
 	"github.com/BAN1ce/skyTree/logger"
 	"github.com/BAN1ce/skyTree/pkg"
 	"github.com/BAN1ce/skyTree/pkg/broker"
+	"github.com/BAN1ce/skyTree/pkg/broker/client"
 	"github.com/BAN1ce/skyTree/pkg/broker/session"
 	topic2 "github.com/BAN1ce/skyTree/pkg/broker/topic"
 	"github.com/BAN1ce/skyTree/pkg/errs"
@@ -24,10 +25,6 @@ import (
 	"sync"
 	"time"
 )
-
-type PacketIDFactory interface {
-	Generate() uint16
-}
 
 type Config struct {
 	WindowSize       int
@@ -50,7 +47,7 @@ type Client struct {
 	handler                 []Handler
 	state                   state.State
 	component               *component
-	packetIDFactory         PacketIDFactory
+	packetIDFactory         client.PacketIDGenerator
 	publishBucket           *utils.Bucket
 	messages                chan pkg.Message
 	topicManager            *topic.Manager
@@ -77,7 +74,7 @@ func NewClient(conn net.Conn, option ...Component) *Client {
 	for _, o := range option {
 		o(c.component)
 	}
-	c.packetIDFactory = utils.NewPacketIDFactory()
+	c.packetIDFactory = NewPacketIDFactory()
 	c.messages = make(chan pkg.Message, c.component.cfg.WindowSize)
 	c.QoS2 = NewQoS2Handler()
 
@@ -92,10 +89,12 @@ func (c *Client) Run(ctx context.Context, handler Handler) {
 		handler,
 		newClientHandler(c),
 	}
+
 	var (
 		controlPacket *packets.ControlPacket
 		err           error
 	)
+
 	for {
 		controlPacket, err = packets.ReadPacket(c.conn)
 		if err != nil {
@@ -239,7 +238,7 @@ func (c *Client) writePacket(packet packets.Packet) error {
 		err              error
 		topicName        string
 	)
-	logger.Logger.Debug("write packet to client", zap.String("client", c.MetaString()), zap.Any("packet", packet))
+
 	defer pool.ByteBufferPool.Put(buf)
 	// publishAck, subscribeAck, unsubscribeAck should use the same packetID as the original packet
 
@@ -270,9 +269,9 @@ func (c *Client) writePacket(packet packets.Packet) error {
 		c.component.plugin.DoSendPublish(c.ID, p)
 		topicName = p.Topic
 		// generate new packetID and store
-		p.PacketID = c.packetIDFactory.Generate()
+		p.PacketID = c.NextPacketID()
 		c.packetIdentifierIDTopic[p.PacketID] = p.Topic
-		logger.Logger.Debug("publish to client", zap.Uint16("packetID", p.PacketID), zap.String("client", c.MetaString()), zap.String("store", p.Topic))
+		logger.Logger.Debug("publish to client", zap.Any("packet", p), zap.Uint16("packetID", p.PacketID), zap.String("client", c.MetaString()), zap.String("store", p.Topic))
 
 	case *packets.Puback:
 		// do plugin
@@ -280,6 +279,7 @@ func (c *Client) writePacket(packet packets.Packet) error {
 
 	case *packets.Pubrec:
 		// do plugin
+		logger.Logger.Debug("send pubrec", zap.String("client", c.MetaString()), zap.Uint16("packetID", p.PacketID))
 		c.component.plugin.DoSendPubRec(c.ID, p)
 
 	case *packets.Pubrel:
@@ -414,4 +414,8 @@ func (c *Client) GetKeepAliveTime() time.Duration {
 
 func (c *Client) GetSession() session.Session {
 	return c.component.session
+}
+
+func (c *Client) NextPacketID() uint16 {
+	return c.packetIDFactory.NextPacketID()
 }

@@ -4,6 +4,31 @@ import "time"
 
 type Broker struct {
 	ConnectAckProperty
+
+	NoSubTopicResponse byte `json:"no_sub_topic_response"`
+}
+
+func NewBroker() *Broker {
+	return &Broker{
+		ConnectAckProperty: ConnectAckProperty{
+			SessionExpired:                  "session_expired",
+			ReceiveMaximum:                  100,
+			MaxQos:                          2,
+			RetainAvailable:                 true,
+			MaximumPacketSize:               268435460,
+			TopicAliasMaximum:               10,
+			WildcardSubscriptionAvailable:   true,
+			SubscriptionIdentifierAvailable: true,
+			SharedSubscriptionAvailable:     true,
+			ServerKeepAlive:                 60,
+			ResponseInformation:             "response_information",
+			ServerReference:                 "server_reference",
+			AuthenticationMethod:            "authentication_method",
+			AuthenticationData:              "authentication_data",
+		},
+		NoSubTopicResponse: 0x00,
+	}
+
 }
 
 type ConnectAckProperty struct {

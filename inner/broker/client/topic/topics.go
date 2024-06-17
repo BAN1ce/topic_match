@@ -65,6 +65,19 @@ func (t *Manager) HandlePublishRec(topicName string, pubrec *packets.Pubrec) err
 	return errs.ErrTopicNotExistsInSubTopics
 }
 
+func (t *Manager) HandlePubRel(topicName string, pubrel *packets.Pubrel) error {
+	if topicValue, ok := t.topic[topicName]; ok {
+		if t1, ok := topicValue.(topic.QoS2); ok {
+			t1.HandlePubRel(pubrel)
+			return nil
+		}
+		logger.Logger.Warn("handle publish Rel failed, handle type error not QoS2")
+		return errs.ErrTopicQoSNotSupport
+	}
+	logger.Logger.Warn("handle publish Rel failed, topic not exists")
+	return errs.ErrTopicNotExistsInSubTopics
+}
+
 func (t *Manager) HandelPublishComp(topicName string, pubcomp *packets.Pubcomp) error {
 	if topicValue, ok := t.topic[topicName]; ok {
 		if t, ok := topicValue.(topic.QoS2); ok {

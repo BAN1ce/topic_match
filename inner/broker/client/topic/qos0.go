@@ -78,6 +78,7 @@ func (q *QoS0) Close() error {
 }
 
 func (q *QoS0) Publish(publish *packet.Message) error {
+	publish.PublishPacket.PacketID = q.client.GetPacketWriter().NextPacketID()
 	return q.client.Publish(publish)
 }
 

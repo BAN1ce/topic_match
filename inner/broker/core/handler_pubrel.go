@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/BAN1ce/skyTree/config"
 	"github.com/BAN1ce/skyTree/inner/broker/client"
 	"github.com/BAN1ce/skyTree/logger"
 	packet2 "github.com/BAN1ce/skyTree/pkg/packet"
@@ -24,23 +25,27 @@ func (p *PublishRel) Handle(broker *Broker, client *client.Client, rawPacket *pa
 	publishComp.PacketID = publishRel.PacketID
 	publishPacket, ok := client.QoS2.HandlePubRel(publishRel)
 	if !ok {
+		logger.Logger.Warn("qos2 handle pubrel error, packet id not found", zap.String("clientID", client.GetID()), zap.Uint16("packetID", publishRel.PacketID))
+
 		publishRel.ReasonCode = packets.PubackUnspecifiedError
-		client.WritePacket(publishComp)
-		return err
+		return client.WritePacket(publishComp)
 	}
 
 	subTopics := broker.subTree.MatchTopic(publishPacket.Topic)
-	messageID, err = broker.messageStore.StorePublishPacket(subTopics, &packet2.Message{
-		ClientID:      client.GetID(),
-		PublishPacket: publishPacket,
-	})
-	if err != nil {
-		logger.Logger.Error("messageStore publish packet error", zap.Error(err))
-		publishRel.ReasonCode = packets.PubackUnspecifiedError
-	}
-	if !publishPacket.Retain {
-		client.WritePacket(publishComp)
-		return err
+	if len(subTopics) == 0 {
+		publishRel.ReasonCode = config.GetConfig().Broker.NoSubTopicResponse
+	} else {
+		messageID, err = broker.messageStore.StorePublishPacket(subTopics, &packet2.Message{
+			ClientID:      client.GetID(),
+			PublishPacket: publishPacket,
+		})
+		if err != nil {
+			logger.Logger.Error("messageStore publish packet error", zap.Error(err))
+			publishRel.ReasonCode = packets.PubackUnspecifiedError
+		}
+		if !publishPacket.Retain {
+			return client.WritePacket(publishComp)
+		}
 	}
 	// if retain is true and payload is not empty, then create retain message id
 	if len(publishPacket.Payload) > 0 {
@@ -57,6 +62,5 @@ func (p *PublishRel) Handle(broker *Broker, client *client.Client, rawPacket *pa
 			publishRel.ReasonCode = packets.PubackUnspecifiedError
 		}
 	}
-	client.WritePacket(publishComp)
-	return err
+	return client.WritePacket(publishComp)
 }

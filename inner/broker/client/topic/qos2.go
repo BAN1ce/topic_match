@@ -70,10 +70,10 @@ func (q *QoS2) Start(ctx context.Context) error {
 
 	// TODO:  why must close at here ?
 	if err := q.Close(); err != nil {
-		logger.Logger.Warn("QoS1: close error = ", zap.Error(err))
+		logger.Logger.Warn("QoS2: close error = ", zap.Error(err))
 	}
 	if err := q.afterClose(); err != nil {
-		logger.Logger.Warn("QoS1: after close error = ", zap.Error(err))
+		logger.Logger.Warn("QoS2: after close error = ", zap.Error(err))
 	}
 	return nil
 }
@@ -155,6 +155,9 @@ func (q *QoS2) Publish(publish *packet.Message) error {
 
 func (q *QoS2) HandlePublishComp(pubcomp *packets.Pubcomp) {
 	q.client.HandelPublishComp(pubcomp)
+}
+
+func (q *QoS2) HandlePubRel(pubrel *packets.Pubrel) {
 }
 
 func (q *QoS2) GetUnFinishedMessage() []*packet.Message {

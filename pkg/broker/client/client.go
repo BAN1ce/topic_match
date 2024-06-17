@@ -10,10 +10,16 @@ type ID interface {
 	GetID() string
 }
 
+type PacketIDGenerator interface {
+	NextPacketID() uint16
+}
+
 type PacketWriter interface {
 	// WritePacket writes the packet to the writer.
 	// Warning: packetID is original packetID, method should change it to the new one that does not used.
 	WritePacket(packet packets.Packet) (err error)
+	PacketIDGenerator
+
 	ID
 	Close() error
 }

@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/BAN1ce/skyTree/config"
 	"github.com/BAN1ce/skyTree/inner/broker/client"
 	"github.com/BAN1ce/skyTree/inner/event"
 	"github.com/BAN1ce/skyTree/logger"
@@ -65,13 +66,22 @@ func (p *PublishHandler) Handle(broker *Broker, client *client.Client, rawPacket
 	}
 
 	var (
-		topic          = packet.Topic
-		subTopics      = broker.subTree.MatchTopic(topic)
+		topic     = packet.Topic
+		subTopics map[string]int32
+
 		publishMessage = &packet2.Message{
 			ClientID:      client.GetID(),
 			PublishPacket: packet,
 		}
 	)
+
+	switch packet.QoS {
+	case broker2.QoS0:
+		subTopics = broker.subTree.MatchTopic(topic)
+	case broker2.QoS1:
+		subTopics = broker.subTree.MatchTopic(topic)
+
+	}
 
 	// double check topic name
 	if topic == "" {
@@ -91,8 +101,8 @@ func (p *PublishHandler) Handle(broker *Broker, client *client.Client, rawPacket
 		}
 	}
 
-	if len(subTopics) == 0 {
-		reasonCode = packets.PubackNoMatchingSubscribers
+	if len(subTopics) == 0 && (packet.QoS != broker2.QoS2) {
+		reasonCode = config.GetConfig().Broker.NoSubTopicResponse
 		return err
 	}
 
@@ -107,7 +117,7 @@ func (p *PublishHandler) Handle(broker *Broker, client *client.Client, rawPacket
 		}
 	case broker2.QoS1:
 		if len(subTopics) == 0 && !packet.Retain {
-			reasonCode = packets.PubackNoMatchingSubscribers
+			reasonCode = config.GetConfig().Broker.NoSubTopicResponse
 			return err
 		}
 		if len(subTopics) == 0 {
@@ -124,14 +134,11 @@ func (p *PublishHandler) Handle(broker *Broker, client *client.Client, rawPacket
 		}
 	case broker2.QoS2:
 		pubrec := packet2.NewPublishRec()
-		if len(subTopics) == 0 {
-			pubrec.ReasonCode = packets.PubrecNoMatchingSubscribers
-			return err
-		}
 		if !client.QoS2.HandlePublish(packet) {
 			pubrec.ReasonCode = packets.PubrecUnspecifiedError
 			return err
 		}
+
 	default:
 		reasonCode = packets.PubackUnspecifiedError
 		return err
@@ -155,12 +162,17 @@ func (p *PublishHandler) response(client *client.Client, reasonCode byte, publis
 		pubAck := packet2.NewPublishAck()
 		pubAck.ReasonCode = reasonCode
 		pubAck.PacketID = publish.PacketID
-		client.WritePacket(pubAck)
+		if err := client.WritePacket(pubAck); err != nil {
+			logger.Logger.Warn("write puback error", zap.Error(err))
+		}
+
 	case broker2.QoS2:
 		pubRec := packet2.NewPublishRec()
 		pubRec.ReasonCode = reasonCode
 		pubRec.PacketID = publish.PacketID
-		client.WritePacket(pubRec)
+		if err := client.WritePacket(pubRec); err != nil {
+			logger.Logger.Warn("write pubrec error", zap.Error(err))
+		}
 	case broker2.QoS0:
 		// do nothing
 	default:

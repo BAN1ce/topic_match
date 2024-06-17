@@ -8,18 +8,24 @@ import (
 	"github.com/eclipse/paho.golang/packets"
 )
 
+type Writer interface {
+	client.PacketWriter
+	client.PacketIDGenerator
+}
+
 type Client struct {
 	writer client.PacketWriter
 	meta   *topic.Meta
 }
 
-func NewClient(writer client.PacketWriter, meta *topic.Meta) *Client {
+func NewClient(writer Writer, meta *topic.Meta) *Client {
 	return &Client{
 		writer: writer,
 		meta:   meta,
 	}
 }
 
+// Publish publishes the message to the client. and should not change the publishing packet
 func (c *Client) Publish(publish *packet.Message) error {
 	// NoLocal means that the server does not send messages published by the client itself.
 	if c.meta.NoLocal && c.writer.GetID() == publish.ClientID {
@@ -31,8 +37,6 @@ func (c *Client) Publish(publish *packet.Message) error {
 	defer pool.PublishPool.Put(publishPacket)
 
 	pool.CopyPublish(publishPacket, publish.PublishPacket)
-	publishPacket.QoS = byte(c.meta.QoS)
-
 	// if topic has identifier, set the identifier to the publishing packet
 	if c.meta.Identifier != 0 {
 		identifier := byte(c.meta.Identifier)
@@ -67,4 +71,8 @@ func (c *Client) HandelPublishComp(pubComp *packets.Pubcomp) {
 
 func (c *Client) GetUnFinishedMessage() []*packet.Message {
 	return nil
+}
+
+func (c *Client) HandlePubRel(pubrel *packets.Pubrel) {
+	//do nothing
 }

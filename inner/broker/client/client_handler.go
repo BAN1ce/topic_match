@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/BAN1ce/skyTree/inner/broker/client/topic"
 	"github.com/BAN1ce/skyTree/logger"
+	"github.com/BAN1ce/skyTree/pkg/broker"
 	"github.com/BAN1ce/skyTree/pkg/broker/session"
 	topic2 "github.com/BAN1ce/skyTree/pkg/broker/topic"
 	"github.com/BAN1ce/skyTree/pkg/packet"
@@ -39,6 +40,11 @@ func (i *InnerHandler) HandlePacket(ctx context.Context, packet *packets.Control
 			logger.Logger.Warn("handle connect error: ", zap.Error(err), zap.String("client", client.MetaString()))
 		}
 	case packets.PUBLISH:
+		publishPacket := packet.Content.(*packets.Publish)
+
+		switch publishPacket.QoS {
+		case broker.QoS2:
+		}
 		// do nothing
 
 	case packets.SUBSCRIBE:
@@ -59,6 +65,10 @@ func (i *InnerHandler) HandlePacket(ctx context.Context, packet *packets.Control
 	case packets.PUBREC:
 		pubRecPacket := packet.Content.(*packets.Pubrec)
 		i.HandlePubRec(pubRecPacket)
+
+	case packets.PUBREL:
+		// do nothing, let broker handle
+
 	case packets.PUBCOMP:
 		pubCompPacket := packet.Content.(*packets.Pubcomp)
 		i.HandlePubComp(pubCompPacket)
@@ -169,6 +179,12 @@ func (i *InnerHandler) HandleUnsub(unsubscribe *packets.Unsubscribe) error {
 	}
 
 	return i.client.writePacket(unsubAck)
+}
+
+func (i *InnerHandler) HandlePublish(publish *packets.Publish) error {
+
+	return nil
+
 }
 
 func (i *InnerHandler) HandlePubAck(pubAck *packets.Puback) error {

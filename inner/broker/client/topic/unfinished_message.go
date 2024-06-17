@@ -8,13 +8,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type Meta struct {
-	topic           string
-	windowSize      int
-	latestMessageID string
-	qos             int32
-}
-
 func FillUnfinishedMessage(ctx context.Context, message []*packet.Message, source broker.MessageSource) []*packet.Message {
 	for i := 0; i < len(message); i++ {
 		msg := message[i]

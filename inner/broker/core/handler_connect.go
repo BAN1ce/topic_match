@@ -53,7 +53,7 @@ func (c *ConnectHandler) Handle(broker *Broker, client *client2.Client, rawPacke
 }
 
 func (c *ConnectHandler) handleUsernamePassword(_ *Broker, _ *client2.Client, packet *packets.Connect, conAck *packets.Connack) error {
-	if packet.UsernameFlag == false && packet.Username != "" {
+	if !packet.UsernameFlag && packet.Username != "" {
 		conAck.ReasonCode = packets.ConnackBadUsernameOrPassword
 		return fmt.Errorf("username flag is false, but username is not empty error")
 	}

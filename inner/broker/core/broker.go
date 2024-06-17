@@ -30,6 +30,10 @@ import (
 	"time"
 )
 
+type Observer interface {
+	OnClientClose(b Broker, c *client.Client)
+}
+
 type Handlers struct {
 	Connect     brokerHandler
 	Publish     brokerHandler
@@ -47,6 +51,7 @@ type Handlers struct {
 type brokerHandler interface {
 	Handle(broker *Broker, client *client.Client, rawPacket *packets.ControlPacket) (err error)
 }
+
 type Broker struct {
 	ctx                    context.Context
 	server                 *server.Server
@@ -122,13 +127,28 @@ func (b *Broker) acceptConn() {
 			WindowSize:       10,
 			ReadStoreTimeout: 3 * time.Second,
 		}), client.WithNotifyClose(b), client.WithPlugin(b.plugins), client.WithRetain(b.retain), client.WithStore(b.messageStore))
+
 		wg.Add(1)
 		go func(c *client.Client) {
 			c.Run(b.ctx, b)
-			logger.Logger.Info("client closed", zap.String("client", c.MetaString()))
+			b.OnClientClose(c)
 			wg.Done()
+			logger.Logger.Info("client closed", zap.String("client", c.MetaString()))
 		}(newClient)
 	}
+}
+
+func (b *Broker) OnClientClose(c *client.Client) {
+	b.mux.Lock()
+	defer b.mux.Unlock()
+
+	if err := b.clientKeepAliveMonitor.DeleteClient(context.TODO(), c.GetUid()); err != nil {
+		logger.Logger.Error("delete client keep alive monitor error", zap.Error(err), zap.String("uid", c.GetUid()))
+	}
+}
+
+func (b *Broker) OnClose(c *client.Client) {
+	logger.Logger.Debug("broker receive client close event", zap.String("client", c.MetaString()))
 }
 
 // ------------------------------------ handle client MQTT PublishPacket ------------------------------------//
@@ -188,7 +208,10 @@ func (b *Broker) executePreMiddleware(client *client.Client, packet *packets.Con
 // ----------------------------------------- support ---------------------------------------------------//
 // writePacket for collect all error log
 func (b *Broker) writePacket(client *client.Client, packet packets.Packet) {
-	client.WritePacket(packet)
+	if err := client.WritePacket(packet); err != nil {
+		logger.Logger.Warn("write packet error", zap.Error(err), zap.String("client", client.MetaString()))
+
+	}
 }
 
 func (b *Broker) CreateClient(client *client.Client) {
@@ -202,6 +225,8 @@ func (b *Broker) DeleteClient(uid string) {
 	b.mux.Lock()
 	var ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
+	logger.Logger.Debug("broker delete client", zap.String("uid", uid))
 	b.clientManager.DeleteClient(uid)
 	if err := b.clientKeepAliveMonitor.DeleteClient(ctx, uid); err != nil {
 		logger.Logger.Error("delete client keep alive monitor error", zap.Error(err), zap.String("uid", uid))

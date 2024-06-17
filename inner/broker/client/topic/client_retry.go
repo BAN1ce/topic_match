@@ -8,12 +8,14 @@ import (
 	"github.com/eclipse/paho.golang/packets"
 	"github.com/zyedidia/generic/list"
 	"go.uber.org/zap"
+	"sync"
 )
 
 type WithRetryClient struct {
 	client *Client
 	queue  *list.List[*packet.Message]
 	retry  retry.MessageRetry
+	mux    sync.RWMutex
 }
 
 func NewQoSWithRetry(client *Client, messageRetry retry.MessageRetry) *WithRetryClient {
@@ -25,15 +27,20 @@ func NewQoSWithRetry(client *Client, messageRetry retry.MessageRetry) *WithRetry
 }
 
 func (r *WithRetryClient) Publish(publish *packet.Message) error {
-	//var (
-	//	retryKey = uuid.NewString()
-	//)
+	r.mux.Lock()
+	defer r.mux.Unlock()
+
+	publish.PublishPacket.PacketID = r.client.writer.NextPacketID()
+
 	// TODO: create retry job
 	r.queue.PushBack(publish)
 	return r.client.Publish(publish)
 }
 
 func (r *WithRetryClient) HandlePublishAck(pubAck *packets.Puback) {
+	r.mux.Lock()
+	defer r.mux.Unlock()
+
 	node := r.queue.Front
 	for node != nil {
 		if node.Value.PublishPacket.PacketID == pubAck.PacketID {
@@ -57,6 +64,9 @@ func (r *WithRetryClient) PubRel(message *packet.Message) error {
 }
 
 func (r *WithRetryClient) GetUnFinishedMessage() []*packet.Message {
+	r.mux.RLock()
+	defer r.mux.RUnlock()
+
 	var (
 		unFinish []*packet.Message
 	)
@@ -67,6 +77,9 @@ func (r *WithRetryClient) GetUnFinishedMessage() []*packet.Message {
 }
 
 func (r *WithRetryClient) HandlePublishRec(pubRec *packets.Pubrec) {
+	r.mux.Lock()
+	defer r.mux.Unlock()
+
 	var (
 		node    = r.queue.Front
 		message *packet.Message
@@ -76,21 +89,27 @@ func (r *WithRetryClient) HandlePublishRec(pubRec *packets.Pubrec) {
 			message = node.Value
 			logger.Logger.Debug("WithRetryClient: mark publish message be received", zap.Uint16("packetID", pubRec.PacketID))
 			node.Value.PubReceived = true
-			break
+			r.client.HandlePublishRec(pubRec)
+			pubRel := packet.NewPublishRel()
+			pubRel.PacketID = pubRec.PacketID
+			message.PubRelPacket = pubRel
+			logger.Logger.Debug("WithRetryClient: send pubRel", zap.Uint16("packetID", pubRec.PacketID))
+			if err := r.client.PubRel(message); err != nil {
+				logger.Logger.Info("WithRetryClient: pubRel failed", zap.Error(err))
+			}
+			return
 		}
 		node = node.Next
 	}
-	r.client.HandlePublishRec(pubRec)
-	pubRel := packet.NewPublishRel()
-	pubRel.PacketID = pubRec.PacketID
-	message.PubRelPacket = pubRel
-	logger.Logger.Debug("WithRetryClient: send pubRel", zap.Uint16("packetID", pubRec.PacketID))
-	if err := r.client.PubRel(message); err != nil {
-		logger.Logger.Info("WithRetryClient: pubRel failed", zap.Error(err))
-	}
+
+	logger.Logger.Warn("WithRetryClient: pubRec not found", zap.Uint16("packetID", pubRec.PacketID))
+
 }
 
 func (r *WithRetryClient) HandelPublishComp(pubComp *packets.Pubcomp) {
+	r.mux.Lock()
+	defer r.mux.Unlock()
+
 	node := r.queue.Front
 	for node != nil {
 		if node.Value.PublishPacket.PacketID == pubComp.PacketID {
@@ -98,11 +117,12 @@ func (r *WithRetryClient) HandelPublishComp(pubComp *packets.Pubcomp) {
 			node.Value.PubReceived = true
 			// TODO : delete retry task
 			r.queue.Remove(node)
-			break
+			r.client.HandelPublishComp(pubComp)
+			return
 		}
 		node = node.Next
 	}
-	r.client.HandelPublishComp(pubComp)
+	logger.Logger.Warn("WithRetryClient: pubComp not found", zap.Uint16("packetID", pubComp.PacketID))
 }
 
 func (r *WithRetryClient) Close() error {
