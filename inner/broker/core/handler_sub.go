@@ -3,7 +3,6 @@ package core
 import (
 	"github.com/BAN1ce/skyTree/inner/broker/client"
 	"github.com/BAN1ce/skyTree/logger"
-	broker2 "github.com/BAN1ce/skyTree/pkg/broker/topic"
 	"github.com/BAN1ce/skyTree/pkg/errs"
 	"github.com/eclipse/paho.golang/packets"
 	"go.uber.org/zap"
@@ -44,22 +43,11 @@ func (s *SubHandler) Handle(b *Broker, client *client.Client, rawPacket *packets
 		return err
 	}
 
-	shareSubscribePacket, _ := broker2.SplitShareAndNoShare(packet)
+	//shareSubscribePacket, _ := broker2.SplitShareAndNoShare(packet)
 
 	// handle share sub, if share sub failed, return error.
-	if err = s.handleShareSub(b, client, shareSubscribePacket); err != nil {
-		return
-	}
-	return
-}
-
-func (s *SubHandler) handleShareSub(broker *Broker, client *client.Client, subscribe *packets.Subscribe) (err error) {
-	for _, subOptions := range subscribe.Subscriptions {
-		meta := broker2.NewMetaFromSubPacket(&subOptions, subscribe.Properties)
-		if _, err = broker.shareManager.Sub(meta, client); err != nil {
-			logger.Logger.Error("share manager sub failed", zap.Error(err))
-			return
-		}
-	}
+	//if err = s.handleShareSub(b, client, shareSubscribePacket); err != nil {
+	//	return
+	//}
 	return
 }

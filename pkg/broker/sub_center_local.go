@@ -26,12 +26,13 @@ func (l *LocalSubCenter) CreateSub(clientID string, topics []packets.SubOptions)
 				QoS:               int32(opt.QoS),
 				NoLocal:           opt.NoLocal,
 				RetainAsPublished: opt.RetainAsPublished,
+				Topic:             opt.Topic,
 			}
 		)
 		if utils.IsShareTopic(opt.Topic) {
+			subOption.ShareGroup, shareTopic = utils.ParseShareTopic(opt.Topic)
 			subOption.Share = true
-			subOption.ShareName = opt.Topic
-			_, shareTopic = utils.ParseShareTopic(opt.Topic)
+			subOption.Topic = shareTopic
 			topicsRequest[shareTopic] = subOption
 		}
 		topicsRequest[opt.Topic] = subOption
@@ -71,7 +72,7 @@ func (l *LocalSubCenter) MatchTopic(topic string) (topics map[string]int32) {
 	return rsp.Topic
 }
 
-func (l *LocalSubCenter) DeleteClient(clientID string) {
+func (l *LocalSubCenter) DeleteClient(clientID string) error {
 	//TODO implement me
 	panic("implement me")
 }

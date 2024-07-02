@@ -5,51 +5,43 @@ import (
 	"math"
 	"math/rand"
 	"strconv"
-	"sync/atomic"
+	"sync"
 )
 
 type PacketIDFactory struct {
-	id *atomic.Uint32
+	id  uint16
+	mux sync.RWMutex
 }
 
 func NewPacketIDFactory() *PacketIDFactory {
 	var (
-		id atomic.Uint32
+		id = randomInitPacketID()
 	)
-	// TODO: first packet id should be randomInitPacketID
-	id.Store(randomInitPacketID())
 	return &PacketIDFactory{
-		id: &id,
+		id: id,
 	}
 }
 
-func randomInitPacketID() uint32 {
-	return uint32(rand.Intn(math.MaxUint32))
+func randomInitPacketID() uint16 {
+	return uint16(rand.Intn(math.MaxUint16))
 }
 
 func (p *PacketIDFactory) SetID(id uint16) {
-	p.id.Store(uint32(id))
-}
-
-func (p *PacketIDFactory) ReadID() uint16 {
-	return uint16(p.id.Load())
+	p.mux.Lock()
+	defer p.mux.Unlock()
+	p.id = id
 }
 
 func (p *PacketIDFactory) NextPacketID() uint16 {
-	var (
-		newID uint16
-	)
-	id := p.id.Add(1)
-	if id == 0x0000 {
-		return p.NextPacketID()
-	}
-	if id == math.MaxUint16 {
-		newID = uint16(id >> 16)
+	p.mux.Lock()
+	defer p.mux.Unlock()
+
+	if p.id == math.MaxUint16 {
+		p.id = 0
 	} else {
-		newID = uint16(id)
+		p.id++
 	}
-	p.id.Store(uint32(newID))
-	return newID
+	return p.id
 }
 
 func PacketIDToString(id uint16) string {
@@ -62,4 +54,33 @@ func StringToPacketID(id string) uint16 {
 		return 0
 	}
 	return uint16(i)
+}
+
+type PacketIDTopic struct {
+	mux      sync.RWMutex
+	packetID map[uint16]string
+}
+
+func NewPacketIDTopic() *PacketIDTopic {
+	return &PacketIDTopic{
+		packetID: make(map[uint16]string),
+	}
+}
+
+func (p *PacketIDTopic) SePacketIDTopic(id uint16, topic string) {
+	p.mux.Lock()
+	defer p.mux.Unlock()
+	p.packetID[id] = topic
+}
+
+func (p *PacketIDTopic) GetTopic(id uint16) string {
+	p.mux.Lock()
+	defer p.mux.Unlock()
+	return p.packetID[id]
+}
+
+func (p *PacketIDTopic) DeletePacketID(id uint16) {
+	p.mux.Lock()
+	defer p.mux.Unlock()
+	delete(p.packetID, id)
 }

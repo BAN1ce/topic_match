@@ -9,6 +9,7 @@ type KeyStore interface {
 	HashStore
 	ZSetStore
 }
+
 type HashStore interface {
 	PutKey(ctx context.Context, key, value string) error
 	ReadKey(ctx context.Context, key string) (string, bool, error)

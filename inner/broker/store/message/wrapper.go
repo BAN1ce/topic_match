@@ -3,25 +3,25 @@ package message
 import (
 	"bytes"
 	"context"
-	"github.com/BAN1ce/skyTree/inner/broker/message_source"
 	"github.com/BAN1ce/skyTree/inner/broker/store"
 	event2 "github.com/BAN1ce/skyTree/inner/event"
 	"github.com/BAN1ce/skyTree/logger"
 	"github.com/BAN1ce/skyTree/pkg/broker"
 	packet2 "github.com/BAN1ce/skyTree/pkg/packet"
 	"go.uber.org/zap"
+	"time"
 )
 
 // Wrapper is a wrapper of pkg.MessageStore
 type Wrapper struct {
-	broker.TopicMessageStore
-	broker.MessageStoreEvent
+	store broker.TopicMessageStore
+	event broker.MessageStoreEvent
 }
 
 func NewStoreWrapper(store broker.TopicMessageStore, event broker.MessageStoreEvent) *Wrapper {
 	return &Wrapper{
-		TopicMessageStore: store,
-		MessageStoreEvent: event,
+		store: store,
+		event: event,
 	}
 }
 
@@ -46,12 +46,12 @@ func (w *Wrapper) StorePublishPacket(topics map[string]int32, packet *packet2.Me
 	for topic := range topics {
 		// store message bytes
 		messageID, err = w.CreatePacket(topic, encodedData.Bytes())
+
 		if err != nil {
 			logger.Logger.Error("create packet to store error = ", zap.Error(err), zap.String("topic", topic))
 		} else {
 			logger.Logger.Debug("create packet to store success", zap.String("topic", topic), zap.String("messageID", messageID))
 			// emit store event
-			event2.GlobalEvent.EmitStoreMessage(topic, messageID)
 		}
 	}
 	return messageID, err
@@ -64,13 +64,8 @@ func (w *Wrapper) StorePublishPacket(topics map[string]int32, packet *packet2.Me
 // read message from store and write to writer
 func (w *Wrapper) ReadPublishMessage(ctx context.Context, topic, startMessageID string, size int, include bool, writer func(message *packet2.Message)) (err error) {
 	// FIXME: If consecutive errors, consider downgrading options
-	var (
-		total int
-	)
 	if startMessageID != "" {
 		if err = w.readStoreWriteToWriter(ctx, topic, startMessageID, size, include, writer); err != nil {
-			return
-		} else if total != 0 {
 			return
 		}
 	}
@@ -95,9 +90,9 @@ func (w *Wrapper) ReadPublishMessage(ctx context.Context, topic, startMessageID 
 	if ctx1.Err() != nil {
 		return
 	}
-	w.CreateListenMessageStoreEvent(topic, f)
+	w.event.CreateListenMessageStoreEvent(topic, f)
 	<-ctx1.Done()
-	w.DeleteListenMessageStoreEvent(topic, f)
+	w.event.DeleteListenMessageStoreEvent(topic, f)
 	return
 }
 
@@ -126,7 +121,7 @@ func (w *Wrapper) readStoreWriteToWriter(ctx context.Context, topic string, id s
 func (w *Wrapper) ReadTopicWillMessage(ctx context.Context, topic, messageID string, writer func(message *packet2.Message)) error {
 	var (
 		// TODO: limit maybe not enough
-		message, err = w.ReadTopicMessagesByID(ctx, topic, messageID, 1, true)
+		message, err = w.store.ReadTopicMessagesByID(ctx, topic, messageID, 1, true)
 	)
 	if err != nil {
 		return err
@@ -143,9 +138,48 @@ func (w *Wrapper) ReadTopicWillMessage(ctx context.Context, topic, messageID str
 }
 
 func (w *Wrapper) DeleteTopicMessageID(ctx context.Context, topic, messageID string) error {
-	return w.DeleteTopicMessageID(ctx, topic, messageID)
+	start := time.Now()
+	err := w.store.DeleteTopicMessageID(ctx, topic, messageID)
+	event2.StoreEvent.EmitDelete(&event2.StoreEventData{
+		Success:  err == nil,
+		Topic:    topic,
+		Duration: time.Since(start),
+	})
+	return err
 }
 
-func (w *Wrapper) MakeMessageSource(topic string) broker.MessageSource {
-	return message_source.NewStoreSource(topic, w.TopicMessageStore, w.MessageStoreEvent)
+func (w *Wrapper) ReadFromTimestamp(ctx context.Context, topic string, timestamp time.Time, limit int) ([]*packet2.Message, error) {
+	start := time.Now()
+	result, err := w.store.ReadFromTimestamp(ctx, topic, timestamp, limit)
+	event2.StoreEvent.EmitRead(&event2.StoreEventData{
+		Topic:    topic,
+		Success:  err == nil,
+		Duration: time.Since(start),
+		Count:    len(result),
+	})
+	return result, err
+}
+
+func (w *Wrapper) ReadTopicMessagesByID(ctx context.Context, topic, id string, limit int, include bool) ([]*packet2.Message, error) {
+	start := time.Now()
+	result, err := w.store.ReadTopicMessagesByID(ctx, topic, id, limit, include)
+	event2.StoreEvent.EmitRead(&event2.StoreEventData{
+		Topic:    topic,
+		Success:  err == nil,
+		Duration: time.Since(start),
+		Count:    len(result),
+	})
+	return result, err
+}
+
+func (w *Wrapper) CreatePacket(topic string, value []byte) (id string, err error) {
+	start := time.Now()
+	id, err = w.store.CreatePacket(topic, value)
+	event2.StoreEvent.EmitStored(&event2.StoreEventData{
+		Topic:     topic,
+		MessageID: id,
+		Success:   err == nil,
+		Duration:  time.Since(start),
+	})
+	return
 }

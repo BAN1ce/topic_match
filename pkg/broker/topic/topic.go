@@ -5,7 +5,31 @@ import (
 	"github.com/BAN1ce/skyTree/pkg/packet"
 	"github.com/BAN1ce/skyTree/pkg/utils"
 	"github.com/eclipse/paho.golang/packets"
+	"strings"
 )
+
+type Topic interface {
+	Start(ctx context.Context) error
+	Close() error
+	Publish(publish *packet.Message) error
+	GetUnFinishedMessage() []*packet.Message
+	Meta() Meta
+}
+
+type QoS0Subscriber interface {
+	Topic
+}
+
+type QoS1Subscriber interface {
+	Topic
+	HandlePublishAck(puback *packets.Puback) (ok bool, err error)
+}
+
+type QoS2Subscriber interface {
+	Topic
+	HandlePublishRec(pubrec *packets.Pubrec) (ok bool, err error)
+	HandlePublishComp(pubcomp *packets.Pubcomp) (ok bool, err error)
+}
 
 type Meta struct {
 	Identifier        int            `json:"identifier,omitempty"`
@@ -17,6 +41,8 @@ type Meta struct {
 	LatestMessageID   string         `json:"latest_message_id"`
 	QoS               int32          `json:"qos"`
 	Properties        []packets.User `json:"properties"`
+	Share             bool           `json:"share"`
+	ShareTopic        *ShareTopic    `json:"share_topic"`
 }
 
 func NewMetaFromSubPacket(subOption *packets.SubOptions, properties *packets.Properties) *Meta {
@@ -28,34 +54,15 @@ func NewMetaFromSubPacket(subOption *packets.SubOptions, properties *packets.Pro
 		QoS:               int32(subOption.QoS),
 		Properties:        properties.User,
 	}
+	if utils.IsShareTopic(subOption.Topic) {
+		m.Share = true
+		m.ShareTopic = NewShareTopic(subOption.Topic)
+	}
+
 	if properties.SubscriptionIdentifier != nil {
 		m.Identifier = *properties.SubscriptionIdentifier
 	}
 	return m
-}
-
-type Topic interface {
-	Start(ctx context.Context) error
-	Close() error
-	Publish(publish *packet.Message) error
-	GetUnFinishedMessage() []*packet.Message
-	Meta() Meta
-}
-
-type QoS0 interface {
-	Topic
-}
-
-type QoS1 interface {
-	Topic
-	HandlePublishAck(puback *packets.Puback)
-}
-
-type QoS2 interface {
-	Topic
-	HandlePublishRec(pubrec *packets.Pubrec)
-	HandlePublishComp(pubcomp *packets.Pubcomp)
-	HandlePubRel(pubrel *packets.Pubrel)
 }
 
 func SplitShareAndNoShare(subPacket *packets.Subscribe) (shareSubscribe *packets.Subscribe, noShareSubscribe *packets.Subscribe) {
@@ -81,4 +88,32 @@ func SplitShareAndNoShare(subPacket *packets.Subscribe) (shareSubscribe *packets
 	shareSubscribe.Subscriptions = shareTopic
 	noShareSubscribe.Subscriptions = noShareTopic
 	return shareSubscribe, noShareSubscribe
+}
+
+type ShareTopic struct {
+	FullTopic  string
+	ShareGroup string
+	Topic      string
+}
+
+func NewShareTopic(fullTopic string) *ShareTopic {
+	st := &ShareTopic{
+		FullTopic: fullTopic,
+	}
+	s := strings.TrimPrefix(fullTopic, "$share/")
+
+	if i := strings.Index(s, "/"); i != -1 {
+		st.ShareGroup = s[0:i]
+	}
+	s = strings.TrimPrefix(s, st.ShareGroup)
+	st.Topic = strings.TrimPrefix(s, "/")
+	return st
+}
+
+func GetShareName(topic string) string {
+	return strings.Split(topic, "/")[1]
+
+}
+func DeleteSharePrefix(fullTopic string) string {
+	return strings.TrimPrefix(fullTopic, "$share")
 }

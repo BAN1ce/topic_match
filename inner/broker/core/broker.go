@@ -7,13 +7,13 @@ import (
 	"github.com/BAN1ce/skyTree/inner/broker/client"
 	"github.com/BAN1ce/skyTree/inner/broker/monitor"
 	"github.com/BAN1ce/skyTree/inner/broker/server"
-	"github.com/BAN1ce/skyTree/inner/broker/share"
 	"github.com/BAN1ce/skyTree/inner/broker/state"
 	"github.com/BAN1ce/skyTree/inner/broker/store/message"
 	"github.com/BAN1ce/skyTree/inner/event"
 	"github.com/BAN1ce/skyTree/inner/facade"
 	"github.com/BAN1ce/skyTree/logger"
 	"github.com/BAN1ce/skyTree/pkg/broker"
+	client2 "github.com/BAN1ce/skyTree/pkg/broker/client"
 	"github.com/BAN1ce/skyTree/pkg/broker/plugin"
 	"github.com/BAN1ce/skyTree/pkg/broker/retain"
 	"github.com/BAN1ce/skyTree/pkg/broker/session"
@@ -67,7 +67,6 @@ type Broker struct {
 	preMiddleware          map[byte][]middleware.PacketMiddleware
 	handlers               *Handlers
 	mux                    sync.Mutex
-	shareManager           *share.Manager
 	plugins                *plugin.Plugins
 	clientKeepAliveMonitor *monitor.KeepAlive
 	retain                 retain.Retain
@@ -158,7 +157,7 @@ func (b *Broker) HandlePacket(ctx context.Context, packet *packets.ControlPacket
 	if err = b.executePreMiddleware(client, packet); err != nil {
 		return
 	}
-	logger.Logger.Debug("handle packet", zap.String("client", client.MetaString()), zap.Any("packet", packet))
+	logger.Logger.Debug("Handle Receive Packet", zap.String("client", client.MetaString()), zap.Any("packet", packet))
 
 	// TODO: emit event with packet.Content pointer to avoid copy ?  but need to check if it is safe.
 	event.GlobalEvent.EmitClientMQTTEvent(packet.FixedHeader.Type, packet.Content)
@@ -208,7 +207,7 @@ func (b *Broker) executePreMiddleware(client *client.Client, packet *packets.Con
 // ----------------------------------------- support ---------------------------------------------------//
 // writePacket for collect all error log
 func (b *Broker) writePacket(client *client.Client, packet packets.Packet) {
-	if err := client.WritePacket(packet); err != nil {
+	if err := client.WritePacket(client2.NewWritePacket(packet)); err != nil {
 		logger.Logger.Warn("write packet error", zap.Error(err), zap.String("client", client.MetaString()))
 
 	}
@@ -217,28 +216,38 @@ func (b *Broker) writePacket(client *client.Client, packet packets.Packet) {
 func (b *Broker) CreateClient(client *client.Client) {
 	b.mux.Lock()
 	b.clientManager.CreateClient(client)
-	event.GlobalEvent.EmitClientOnline(client.GetUid())
+
+	event.GlobalEvent.EmitClientCountState(b.clientManager.Count())
 	b.mux.Unlock()
 
 }
 func (b *Broker) DeleteClient(uid string) {
 	b.mux.Lock()
+	defer b.mux.Unlock()
+	b.deleteClient(uid)
+}
+
+func (b *Broker) deleteClient(uid string) {
 	var ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	logger.Logger.Debug("broker delete client", zap.String("uid", uid))
-	b.clientManager.DeleteClient(uid)
+	event.GlobalEvent.EmitClientCountState(b.clientManager.Count())
+
+	event.GlobalEvent.EmitClientDeleteSuccess(uid)
+
+	logger.Logger.Debug("broker delete deleteClient", zap.String("uid", uid))
+	b.clientManager.DestroyClient(uid)
+
 	if err := b.clientKeepAliveMonitor.DeleteClient(ctx, uid); err != nil {
-		logger.Logger.Error("delete client keep alive monitor error", zap.Error(err), zap.String("uid", uid))
+		logger.Logger.Error("delete deleteClient keep alive monitor error", zap.Error(err), zap.String("uid", uid))
 	}
-	event.GlobalEvent.EmitClientOffline(uid)
-	b.mux.Unlock()
+
 }
 
 func (b *Broker) NotifyClientClose(client *client.Client) {
 	b.mux.Lock()
-	b.clientManager.DeleteClient(client.UID)
-	b.mux.Unlock()
+	defer b.mux.Unlock()
+	b.deleteClient(client.GetUid())
 }
 
 func (b *Broker) NotifyWillMessage(willMessage *session.WillMessage) {
@@ -253,7 +262,7 @@ func (b *Broker) NotifyWillMessage(willMessage *session.WillMessage) {
 	)
 	logger.Logger.Info("notify will message", zap.String("topic", willMessage.Topic))
 
-	event.GlobalEvent.EmitClientPublish(willMessage.Topic, publishMessage)
+	event.GlobalEvent.EmitReceivedPublishDone(willMessage.Topic, publishMessage)
 
 	topics := b.subTree.MatchTopic(willMessage.Topic)
 
@@ -325,8 +334,9 @@ func (b *Broker) ReadTopic(topic string) (*model.Topic, error) {
 
 // CloseExpiredClient close expired client
 func (b *Broker) CloseExpiredClient(uid []string) {
-	logger.Logger.Info("close expired client", zap.Strings("uid", uid))
-	for _, id := range uid {
-		b.DeleteClient(id)
-	}
+	return
+	//logger.Logger.Info("close expired client", zap.Strings("uid", uid))
+	//for _, id := range uid {
+	//	b.DeleteClient(id)
+	//}
 }

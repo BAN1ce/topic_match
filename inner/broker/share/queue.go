@@ -25,24 +25,29 @@ func (t *Queue) PutBackMessage(message []*packet.Message) {
 	}
 }
 
+// AppendMessage appends a message to the queue
 func (t *Queue) AppendMessage(message []*packet.Message) {
 	t.mux.Lock()
 	defer t.mux.Unlock()
-	for _, v := range message {
-		t.queue.PushBack(v)
+
+	for i := 0; i < len(message); i++ {
+		t.queue.PushBack(message[i])
 	}
 }
 
 func (t *Queue) PopQueue(n int) []*packet.Message {
 	t.mux.Lock()
 	defer t.mux.Unlock()
+
 	var message []*packet.Message
+
 	for i := 0; i < n; i++ {
 		if t.queue.Len() == 0 {
 			break
 		}
-		message = append(message, t.queue.Front().Value.(*packet.Message))
-		t.queue.Remove(t.queue.Front())
+		first := t.queue.Front()
+		message = append(message, first.Value.(*packet.Message))
+		t.queue.Remove(first)
 	}
 	return message
 }

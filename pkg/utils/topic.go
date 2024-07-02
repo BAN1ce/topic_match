@@ -37,8 +37,8 @@ func subQosMoreThan0(topics map[string]int32) bool {
 	return false
 }
 
-func ParseShareTopic(shareTopic string) (shareName, subTopic string) {
-	shareNameSubTopic := strings.TrimLeft(shareTopic, "$share/")
+func ParseShareTopic(shareTopic string) (shareGroup, subTopic string) {
+	shareNameSubTopic := strings.TrimPrefix(shareTopic, "$share/")
 	index := strings.Index(shareNameSubTopic, "/")
 	if index == -1 {
 		return "", ""

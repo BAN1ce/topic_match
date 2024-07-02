@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"github.com/BAN1ce/skyTree/inner/broker/client"
+	client2 "github.com/BAN1ce/skyTree/pkg/broker/client"
 	"github.com/BAN1ce/skyTree/pkg/errs"
 	"github.com/eclipse/paho.golang/packets"
 )
@@ -25,7 +26,9 @@ func (p *AuthPassword) Handle(client *client.Client, packet *packets.ControlPack
 	if !p.auth.Auth(con.Username, string(con.Password)) {
 		connAck := packets.NewControlPacket(packets.CONNACK).Content.(*packets.Connack)
 		connAck.ReasonCode = packets.ConnackBadUsernameOrPassword
-		client.WritePacket(connAck)
+		client.WritePacket(&client2.WritePacket{
+			Packet: connAck,
+		})
 		return errs.ErrPasswordWrong
 	}
 	return nil

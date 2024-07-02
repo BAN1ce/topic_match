@@ -3,13 +3,15 @@ package client
 import (
 	"context"
 	"fmt"
-	"github.com/BAN1ce/skyTree/inner/broker/client/topic"
+	"github.com/BAN1ce/skyTree/inner/broker/client/sub_topic"
+	"github.com/BAN1ce/skyTree/inner/event"
 	"github.com/BAN1ce/skyTree/logger"
 	"github.com/BAN1ce/skyTree/pkg/broker"
+	client2 "github.com/BAN1ce/skyTree/pkg/broker/client"
 	"github.com/BAN1ce/skyTree/pkg/broker/session"
 	topic2 "github.com/BAN1ce/skyTree/pkg/broker/topic"
 	"github.com/BAN1ce/skyTree/pkg/packet"
-	"github.com/BAN1ce/skyTree/pkg/utils"
+	"github.com/BAN1ce/skyTree/pkg/rate"
 	"github.com/eclipse/paho.golang/packets"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -42,9 +44,8 @@ func (i *InnerHandler) HandlePacket(ctx context.Context, packet *packets.Control
 	case packets.PUBLISH:
 		publishPacket := packet.Content.(*packets.Publish)
 
-		switch publishPacket.QoS {
-		case broker.QoS2:
-		}
+		return i.HandlePublish(publishPacket)
+
 		// do nothing
 
 	case packets.SUBSCRIBE:
@@ -67,13 +68,16 @@ func (i *InnerHandler) HandlePacket(ctx context.Context, packet *packets.Control
 		i.HandlePubRec(pubRecPacket)
 
 	case packets.PUBREL:
-		// do nothing, let broker handle
+		//nolint
+		i.HandlePubRel(packet.Content.(*packets.Pubrel))
 
 	case packets.PUBCOMP:
 		pubCompPacket := packet.Content.(*packets.Pubcomp)
 		i.HandlePubComp(pubCompPacket)
 	case packets.PINGREQ:
-		return i.client.WritePacket(pong)
+		return i.client.WritePacket(&client2.WritePacket{
+			Packet: pong,
+		})
 
 	default:
 		err = fmt.Errorf("unknown packet type = %d", packet.FixedHeader.Type)
@@ -94,14 +98,15 @@ func (i *InnerHandler) HandleConnect(connectPacket *packets.Connect) error {
 	i.recoverTopicFromSession()
 
 	var (
-		windowSize = -1
+		windowSize = 1
 	)
 	if connectPacket.Properties.ReceiveMaximum != nil && *connectPacket.Properties.ReceiveMaximum > 0 {
 		windowSize = int(*connectPacket.Properties.ReceiveMaximum)
 	}
-	if windowSize == -1 {
-		i.client.publishBucket = utils.NewBucket(windowSize)
-	}
+	logger.Logger.Debug("set window size", zap.Int("windowSize", windowSize), zap.String("client", i.client.MetaString()))
+
+	i.client.publishBucket = rate.NewBucket(windowSize)
+
 	if connectPacket.WillFlag {
 		if err := i.client.setWill(&session.WillMessage{
 			Topic:       connectPacket.WillTopic,
@@ -117,7 +122,9 @@ func (i *InnerHandler) HandleConnect(connectPacket *packets.Connect) error {
 
 	var conAck = packets.NewControlPacket(packets.CONNACK).Content.(*packets.Connack)
 	conAck.ReasonCode = packets.ConnackSuccess
-	return i.client.writePacket(conAck)
+	return i.client.writePacket(&client2.WritePacket{
+		Packet: conAck,
+	})
 }
 
 func (i *InnerHandler) HandleSub(subscribe *packets.Subscribe) error {
@@ -134,15 +141,21 @@ func (i *InnerHandler) HandleSub(subscribe *packets.Subscribe) error {
 	var brokerTopics = map[string]topic2.Topic{}
 
 	// handle simple sub
-	for _, subOptions := range noShareSubscribePacket.Subscriptions {
+	for _, subOptions := range subscribe.Subscriptions {
 		meta := topic2.NewMetaFromSubPacket(&subOptions, noShareSubscribePacket.Properties)
-		brokerTopics[subOptions.Topic] = topic.CreateTopic(i.client, meta)
+		t, err := sub_topic.CreateTopic(i.client, meta)
+		if err != nil {
+			subAck.Reasons = append(subAck.Reasons, 0x80)
+			continue
+		}
+		brokerTopics[subOptions.Topic] = t
 		i.client.getSession().CreateSubTopic(meta)
 		subAck.Reasons = append(subAck.Reasons, subOptions.QoS)
 	}
 
 	// client handle sub and create qos0,qos1,qos2 subOptions
 	for topicName, t := range brokerTopics {
+		//nolint
 		c.topicManager.AddTopic(topicName, t)
 
 		// get retain message after sub
@@ -159,7 +172,9 @@ func (i *InnerHandler) HandleSub(subscribe *packets.Subscribe) error {
 		}
 	}
 
-	return i.client.writePacket(subAck)
+	return i.client.writePacket(&client2.WritePacket{
+		Packet: subAck,
+	})
 }
 
 func (i *InnerHandler) HandleUnsub(unsubscribe *packets.Unsubscribe) error {
@@ -178,46 +193,64 @@ func (i *InnerHandler) HandleUnsub(unsubscribe *packets.Unsubscribe) error {
 		unsubAck.Reasons = append(unsubAck.Reasons, packets.UnsubackSuccess)
 	}
 
-	return i.client.writePacket(unsubAck)
+	return i.client.writePacket(&client2.WritePacket{
+		Packet: unsubAck,
+	})
 }
 
 func (i *InnerHandler) HandlePublish(publish *packets.Publish) error {
+	if publish.QoS != broker.QoS2 {
+		event.GlobalEvent.EmitReceivedPublishDone(publish.Topic, &packet.Message{
+			PublishPacket: publish,
+		})
+	}
+	// Emit event
 
 	return nil
-
 }
 
 func (i *InnerHandler) HandlePubAck(pubAck *packets.Puback) error {
 	c := i.client
-	topicName := c.packetIdentifierIDTopic[pubAck.PacketID]
+	topicName := c.packetIdentifierIDTopic.GetTopic(pubAck.PacketID)
 	if len(topicName) == 0 {
 		logger.Logger.Warn("pubAck packetID not found store", zap.String("client", c.MetaString()), zap.Uint16("packetID", pubAck.PacketID))
 		return nil
 	}
-	c.publishBucket.PutToken()
-	c.topicManager.HandlePublishAck(topicName, pubAck)
+	if ok, err := c.topicManager.HandlePublishAck(topicName, pubAck); err != nil {
+		return err
+	} else if ok {
+		c.publishBucket.PutToken()
+	}
 	return nil
 }
 
 func (i *InnerHandler) HandlePubRec(pubRec *packets.Pubrec) {
 	c := i.client
-	topicName := c.packetIdentifierIDTopic[pubRec.PacketID]
+	topicName := c.packetIdentifierIDTopic.GetTopic(pubRec.PacketID)
 	if len(topicName) == 0 {
 		logger.Logger.Warn("pubRec packetID not found store", zap.String("client", c.MetaString()), zap.Uint16("packetID", pubRec.PacketID))
 		return
 	}
-	c.topicManager.HandlePublishRec(topicName, pubRec)
+	if err := c.topicManager.HandlePublishRec(topicName, pubRec); err != nil {
+		logger.Logger.Error("handle pubRec error", zap.Error(err), zap.Any("client", i.client.Meta()))
+	}
 }
 
+// HandlePubComp handles the pubComp packet from receiver
 func (i *InnerHandler) HandlePubComp(pubRel *packets.Pubcomp) {
 	c := i.client
-	topicName := c.packetIdentifierIDTopic[pubRel.PacketID]
+	topicName := c.packetIdentifierIDTopic.GetTopic(pubRel.PacketID)
 	if len(topicName) == 0 {
 		logger.Logger.Warn("pubComp packetID not found store", zap.String("client", c.MetaString()), zap.Uint16("packetID", pubRel.PacketID))
 		return
 	}
-	c.publishBucket.PutToken()
-	c.topicManager.HandelPublishComp(topicName, pubRel)
+	if ok, err := c.topicManager.HandelPublishComp(topicName, pubRel); err != nil {
+		logger.Logger.Error("handle pubComp error", zap.Error(err))
+	} else if ok {
+		c.publishBucket.PutToken()
+	} else {
+		logger.Logger.Debug("pubComp not found", zap.String("client", c.MetaString()), zap.Uint16("packetID", pubRel.PacketID))
+	}
 }
 
 var (
@@ -227,7 +260,9 @@ var (
 
 func (i *InnerHandler) HandlePing(_ *packets.Pingreq) {
 	i.client.RefreshAliveTime()
-	_ = i.client.WritePacket(pingResp)
+	_ = i.client.WritePacket(&client2.WritePacket{
+		Packet: pingResp,
+	})
 }
 
 func (i *InnerHandler) recoverTopicFromSession() {
@@ -240,7 +275,13 @@ func (i *InnerHandler) recoverTopicFromSession() {
 		)
 		logger.Logger.Debug("recover topic from getSession", zap.Any("meta", topicMeta))
 		unfinishedMessage := getSession.ReadTopicUnFinishedMessage(topicName)
-		subTopic := topic.CreateTopicFromSession(i.client, &topicMeta, unfinishedMessage)
-		i.client.topicManager.AddTopic(topicName, subTopic)
+		subTopic := sub_topic.CreateTopicFromSession(i.client, &topicMeta, unfinishedMessage)
+		if err := i.client.topicManager.AddTopic(topicName, subTopic); err != nil {
+			logger.Logger.Error("recover topic from getSession error", zap.Error(err))
+		}
 	}
+}
+
+func (i *InnerHandler) HandlePubRel(pubrel *packets.Pubrel) error {
+	return nil
 }

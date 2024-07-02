@@ -3,7 +3,9 @@ package core
 import (
 	"github.com/BAN1ce/skyTree/config"
 	"github.com/BAN1ce/skyTree/inner/broker/client"
+	"github.com/BAN1ce/skyTree/inner/event"
 	"github.com/BAN1ce/skyTree/logger"
+	client2 "github.com/BAN1ce/skyTree/pkg/broker/client"
 	packet2 "github.com/BAN1ce/skyTree/pkg/packet"
 	"github.com/eclipse/paho.golang/packets"
 	"go.uber.org/zap"
@@ -23,17 +25,21 @@ func (p *PublishRel) Handle(broker *Broker, client *client.Client, rawPacket *pa
 		messageID   string
 	)
 	publishComp.PacketID = publishRel.PacketID
-	publishPacket, ok := client.QoS2.HandlePubRel(publishRel)
-	if !ok {
-		logger.Logger.Warn("qos2 handle pubrel error, packet id not found", zap.String("clientID", client.GetID()), zap.Uint16("packetID", publishRel.PacketID))
+	publishPacket, ok := client.QoS2.Delete(publishRel)
 
-		publishRel.ReasonCode = packets.PubackUnspecifiedError
-		return client.WritePacket(publishComp)
+	if !ok {
+		logger.Logger.Warn("qos2 handle pubrel error, packet id not found, maybe deleted, because handled", zap.String("clientID", client.GetID()), zap.Uint16("packetID", publishRel.PacketID))
+		return client.WritePacket(client2.NewWritePacket(publishComp))
+	} else {
+		// Emit event
+		event.GlobalEvent.EmitReceivedPublishDone(publishPacket.Topic, &packet2.Message{
+			PublishPacket: publishPacket,
+		})
 	}
 
 	subTopics := broker.subTree.MatchTopic(publishPacket.Topic)
 	if len(subTopics) == 0 {
-		publishRel.ReasonCode = config.GetConfig().Broker.NoSubTopicResponse
+		publishComp.ReasonCode = config.GetConfig().Broker.NoSubTopicResponse
 	} else {
 		messageID, err = broker.messageStore.StorePublishPacket(subTopics, &packet2.Message{
 			ClientID:      client.GetID(),
@@ -44,7 +50,7 @@ func (p *PublishRel) Handle(broker *Broker, client *client.Client, rawPacket *pa
 			publishRel.ReasonCode = packets.PubackUnspecifiedError
 		}
 		if !publishPacket.Retain {
-			return client.WritePacket(publishComp)
+			return client.WritePacket(client2.NewWritePacket(publishComp))
 		}
 	}
 	// if retain is true and payload is not empty, then create retain message id
@@ -62,5 +68,7 @@ func (p *PublishRel) Handle(broker *Broker, client *client.Client, rawPacket *pa
 			publishRel.ReasonCode = packets.PubackUnspecifiedError
 		}
 	}
-	return client.WritePacket(publishComp)
+	return client.WritePacket(&client2.WritePacket{
+		Packet: publishComp,
+	})
 }

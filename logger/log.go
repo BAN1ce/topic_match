@@ -6,13 +6,17 @@ import (
 	"log"
 )
 
-var Logger *zap.Logger
+var Logger *SkyLogger
+
+type SkyLogger struct {
+	*zap.Logger
+}
 
 func init() {
 	var (
 		zapConfig = zap.Config{
 			Level:       zap.NewAtomicLevelAt(zap.DebugLevel),
-			Development: false,
+			Development: true,
 			Sampling: &zap.SamplingConfig{
 				Initial:    100,
 				Thereafter: 100,
@@ -36,9 +40,13 @@ func init() {
 			ErrorOutputPaths: []string{"stderr"},
 		}
 		err error
+		l   *zap.Logger
 	)
-	Logger, err = zapConfig.Build()
+	l, err = zapConfig.Build()
 	if err != nil {
 		log.Fatal("init logger error")
+	}
+	Logger = &SkyLogger{
+		Logger: l,
 	}
 }

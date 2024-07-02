@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	client2 "github.com/BAN1ce/skyTree/inner/broker/client"
+	"github.com/BAN1ce/skyTree/inner/event"
 	"github.com/BAN1ce/skyTree/logger"
+	client3 "github.com/BAN1ce/skyTree/pkg/broker/client"
 	session2 "github.com/BAN1ce/skyTree/pkg/broker/session"
 	"github.com/BAN1ce/skyTree/pkg/errs"
 	"github.com/BAN1ce/skyTree/pkg/state"
@@ -26,6 +28,12 @@ func (c *ConnectHandler) Handle(broker *Broker, client *client2.Client, rawPacke
 	var (
 		err error
 	)
+
+	defer func() {
+		// emit client connect result event
+		event.GlobalEvent.EmitClientConnectResult(client.GetUid(), err == nil)
+	}()
+
 	// check received connect packet
 	if client.IsState(state.ConnectReceived) {
 		err = fmt.Errorf("client %s already received connect packet", client.ID)
@@ -38,18 +46,23 @@ func (c *ConnectHandler) Handle(broker *Broker, client *client2.Client, rawPacke
 	)
 
 	if err = c.handleUsernamePassword(broker, client, connectPacket, conAck); err != nil {
-		_ = client.WritePacket(conAck)
+		_ = client.WritePacket(client3.NewWritePacket(conAck))
 		return err
 	}
 
 	// handle clean start flag
 	if err = c.handleCleanStart(broker, client, *connectPacket, conAck); err != nil {
-		_ = client.WritePacket(conAck)
+		_ = client.WritePacket(client3.NewWritePacket(conAck))
 		return err
 	}
 	broker.CreateClient(client)
 
-	return broker.clientKeepAliveMonitor.SetClientAliveTime(client.UID, utils.NextAliveTime(int64(connectPacket.KeepAlive)))
+	err = broker.clientKeepAliveMonitor.SetClientAliveTime(client.UID, utils.NextAliveTime(int64(connectPacket.KeepAlive)))
+	if err != nil {
+		logger.Logger.Error("set client alive time error", zap.Error(err))
+	}
+
+	return err
 }
 
 func (c *ConnectHandler) handleUsernamePassword(_ *Broker, _ *client2.Client, packet *packets.Connect, conAck *packets.Connack) error {

@@ -6,6 +6,7 @@ import (
 	"github.com/BAN1ce/skyTree/inner/event"
 	"github.com/BAN1ce/skyTree/logger"
 	broker2 "github.com/BAN1ce/skyTree/pkg/broker"
+	client2 "github.com/BAN1ce/skyTree/pkg/broker/client"
 	"github.com/BAN1ce/skyTree/pkg/broker/retain"
 	"github.com/BAN1ce/skyTree/pkg/errs"
 	packet2 "github.com/BAN1ce/skyTree/pkg/packet"
@@ -75,12 +76,10 @@ func (p *PublishHandler) Handle(broker *Broker, client *client.Client, rawPacket
 		}
 	)
 
-	switch packet.QoS {
-	case broker2.QoS0:
+	if packet.QoS != broker2.QoS2 {
 		subTopics = broker.subTree.MatchTopic(topic)
-	case broker2.QoS1:
-		subTopics = broker.subTree.MatchTopic(topic)
-
+		// Emit received publish event
+		event.GlobalEvent.EmitReceivedPublishDone(topic, publishMessage)
 	}
 
 	// double check topic name
@@ -108,10 +107,10 @@ func (p *PublishHandler) Handle(broker *Broker, client *client.Client, rawPacket
 
 	// TODO: should emit all wildcard messageStore
 	// TODO: should emit all wildcard messageStore
-	event.GlobalEvent.EmitClientPublish(topic, publishMessage)
 
 	switch qos {
 	case broker2.QoS0:
+
 		if messageID, err = broker.messageStore.StorePublishPacket(subTopics, publishMessage); err != nil {
 			logger.Logger.Error("messageStore publish packet for QoS0 error", zap.Error(err), zap.String("messageStore", topic), zap.String("messageID", messageID))
 		}
@@ -134,7 +133,7 @@ func (p *PublishHandler) Handle(broker *Broker, client *client.Client, rawPacket
 		}
 	case broker2.QoS2:
 		pubrec := packet2.NewPublishRec()
-		if !client.QoS2.HandlePublish(packet) {
+		if !client.QoS2.StoreNotExists(packet) {
 			pubrec.ReasonCode = packets.PubrecUnspecifiedError
 			return err
 		}
@@ -162,7 +161,7 @@ func (p *PublishHandler) response(client *client.Client, reasonCode byte, publis
 		pubAck := packet2.NewPublishAck()
 		pubAck.ReasonCode = reasonCode
 		pubAck.PacketID = publish.PacketID
-		if err := client.WritePacket(pubAck); err != nil {
+		if err := client.WritePacket(client2.NewWritePacket(pubAck)); err != nil {
 			logger.Logger.Warn("write puback error", zap.Error(err))
 		}
 
@@ -170,7 +169,7 @@ func (p *PublishHandler) response(client *client.Client, reasonCode byte, publis
 		pubRec := packet2.NewPublishRec()
 		pubRec.ReasonCode = reasonCode
 		pubRec.PacketID = publish.PacketID
-		if err := client.WritePacket(pubRec); err != nil {
+		if err := client.WritePacket(client2.NewWritePacket(pubRec)); err != nil {
 			logger.Logger.Warn("write pubrec error", zap.Error(err))
 		}
 	case broker2.QoS0:

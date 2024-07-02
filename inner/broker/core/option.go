@@ -2,7 +2,6 @@ package core
 
 import (
 	"github.com/BAN1ce/skyTree/inner/broker/client"
-	"github.com/BAN1ce/skyTree/inner/broker/share"
 	"github.com/BAN1ce/skyTree/inner/broker/state"
 	"github.com/BAN1ce/skyTree/inner/broker/store/message"
 	"github.com/BAN1ce/skyTree/inner/facade"
@@ -18,12 +17,6 @@ type Options struct {
 }
 
 type Option func(*Broker)
-
-func WithShareManager(manager *share.Manager) Option {
-	return func(broker *Broker) {
-		broker.shareManager = manager
-	}
-}
 
 func WithUserAuth(auth middleware.UserAuth) Option {
 	return func(core *Broker) {

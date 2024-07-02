@@ -35,49 +35,71 @@ func (m *MockMessageSource) EXPECT() *MockMessageSourceMockRecorder {
 	return m.recorder
 }
 
-// Close mocks base method.
-func (m *MockMessageSource) Close() error {
+// ListenMessage mocks base method.
+func (m *MockMessageSource) ListenMessage(ctx context.Context, writer chan *packet.Message) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Close")
+	ret := m.ctrl.Call(m, "ListenMessage", ctx, writer)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Close indicates an expected call of Close.
-func (mr *MockMessageSourceMockRecorder) Close() *gomock.Call {
+// ListenMessage indicates an expected call of ListenMessage.
+func (mr *MockMessageSourceMockRecorder) ListenMessage(ctx, writer interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockMessageSource)(nil).Close))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListenMessage", reflect.TypeOf((*MockMessageSource)(nil).ListenMessage), ctx, writer)
 }
 
-// ListenMessage mocks base method.
-func (m *MockMessageSource) ListenMessage(ctx context.Context) (<-chan *packet.Message, error) {
+// NextMessages mocks base method.
+func (m *MockMessageSource) NextMessages(ctx context.Context, n int, startMessageID string, include bool) ([]*packet.Message, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListenMessage", ctx)
-	ret0, _ := ret[0].(<-chan *packet.Message)
+	ret := m.ctrl.Call(m, "NextMessages", ctx, n, startMessageID, include)
+	ret0, _ := ret[0].([]*packet.Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ListenMessage indicates an expected call of ListenMessage.
-func (mr *MockMessageSourceMockRecorder) ListenMessage(ctx interface{}) *gomock.Call {
+// NextMessages indicates an expected call of NextMessages.
+func (mr *MockMessageSourceMockRecorder) NextMessages(ctx, n, startMessageID, include interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListenMessage", reflect.TypeOf((*MockMessageSource)(nil).ListenMessage), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextMessages", reflect.TypeOf((*MockMessageSource)(nil).NextMessages), ctx, n, startMessageID, include)
+}
+
+// MockReadMessageSource is a mock of ReadMessageSource interface.
+type MockReadMessageSource struct {
+	ctrl     *gomock.Controller
+	recorder *MockReadMessageSourceMockRecorder
+}
+
+// MockReadMessageSourceMockRecorder is the mock recorder for MockReadMessageSource.
+type MockReadMessageSourceMockRecorder struct {
+	mock *MockReadMessageSource
+}
+
+// NewMockReadMessageSource creates a new mock instance.
+func NewMockReadMessageSource(ctrl *gomock.Controller) *MockReadMessageSource {
+	mock := &MockReadMessageSource{ctrl: ctrl}
+	mock.recorder = &MockReadMessageSourceMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockReadMessageSource) EXPECT() *MockReadMessageSourceMockRecorder {
+	return m.recorder
 }
 
 // NextMessages mocks base method.
-func (m *MockMessageSource) NextMessages(ctx context.Context, n int, startMessageID string, include bool) ([]*packet.Message, int, error) {
+func (m *MockReadMessageSource) NextMessages(ctx context.Context, n int, startMessageID string, include bool) ([]*packet.Message, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NextMessages", ctx, n, startMessageID)
+	ret := m.ctrl.Call(m, "NextMessages", ctx, n, startMessageID, include)
 	ret0, _ := ret[0].([]*packet.Message)
-	ret1, _ := ret[1].(int)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // NextMessages indicates an expected call of NextMessages.
-func (mr *MockMessageSourceMockRecorder) NextMessages(ctx, n, startMessageID interface{}) *gomock.Call {
+func (mr *MockReadMessageSourceMockRecorder) NextMessages(ctx, n, startMessageID, include interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextMessages", reflect.TypeOf((*MockMessageSource)(nil).NextMessages), ctx, n, startMessageID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextMessages", reflect.TypeOf((*MockReadMessageSource)(nil).NextMessages), ctx, n, startMessageID, include)
 }
 
 // MockStreamSource is a mock of StreamSource interface.
@@ -104,16 +126,15 @@ func (m *MockStreamSource) EXPECT() *MockStreamSourceMockRecorder {
 }
 
 // ListenMessage mocks base method.
-func (m *MockStreamSource) ListenMessage(ctx context.Context) (<-chan *packet.Message, error) {
+func (m *MockStreamSource) ListenMessage(ctx context.Context, writer chan *packet.Message) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListenMessage", ctx)
-	ret0, _ := ret[0].(<-chan *packet.Message)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "ListenMessage", ctx, writer)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // ListenMessage indicates an expected call of ListenMessage.
-func (mr *MockStreamSourceMockRecorder) ListenMessage(ctx interface{}) *gomock.Call {
+func (mr *MockStreamSourceMockRecorder) ListenMessage(ctx, writer interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListenMessage", reflect.TypeOf((*MockStreamSource)(nil).ListenMessage), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListenMessage", reflect.TypeOf((*MockStreamSource)(nil).ListenMessage), ctx, writer)
 }

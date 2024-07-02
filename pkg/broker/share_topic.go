@@ -23,7 +23,7 @@ type ShareTopic interface {
 
 type ShareTopicQoS1 interface {
 	ShareTopic
-	HandlePublishAck(puback *packets.Puback)
+	HandlePublishAck(puback *packets.Puback) (bool, error)
 }
 
 type ShareTopicQoS2 interface {

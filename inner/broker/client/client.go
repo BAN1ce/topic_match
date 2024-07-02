@@ -2,11 +2,12 @@ package client
 
 import (
 	"context"
-	"github.com/BAN1ce/skyTree/inner/broker/client/topic"
+	"errors"
+	"fmt"
+	"github.com/BAN1ce/skyTree/inner/broker/client/sub_topic"
 	"github.com/BAN1ce/skyTree/inner/facade"
 	"github.com/BAN1ce/skyTree/logger"
 	"github.com/BAN1ce/skyTree/pkg"
-	"github.com/BAN1ce/skyTree/pkg/broker"
 	"github.com/BAN1ce/skyTree/pkg/broker/client"
 	"github.com/BAN1ce/skyTree/pkg/broker/session"
 	topic2 "github.com/BAN1ce/skyTree/pkg/broker/topic"
@@ -14,9 +15,9 @@ import (
 	"github.com/BAN1ce/skyTree/pkg/model"
 	"github.com/BAN1ce/skyTree/pkg/packet"
 	"github.com/BAN1ce/skyTree/pkg/pool"
+	"github.com/BAN1ce/skyTree/pkg/rate"
 	"github.com/BAN1ce/skyTree/pkg/retry"
 	"github.com/BAN1ce/skyTree/pkg/state"
-	"github.com/BAN1ce/skyTree/pkg/utils"
 	"github.com/eclipse/paho.golang/packets"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -37,27 +38,41 @@ type Handler interface {
 }
 
 type Client struct {
-	ID                      string `json:"id"`
-	UID                     string `json:"UID"`
-	connectProperties       *session.ConnectProperties
-	ctx                     context.Context
-	cancel                  context.CancelCauseFunc
-	mux                     sync.RWMutex
-	conn                    net.Conn
-	handler                 []Handler
-	state                   state.State
-	component               *component
-	packetIDFactory         client.PacketIDGenerator
-	publishBucket           *utils.Bucket
-	messages                chan pkg.Message
-	topicManager            *topic.Manager
-	shareTopic              map[string]struct{}
-	packetIdentifierIDTopic map[uint16]string
-	QoS2                    *QoS2Handler
-	topicAliasFromClient    map[uint16]string
-	willFlag                bool
-	keepAlive               time.Duration
-	aliveTime               time.Time
+	mux  sync.RWMutex
+	ctx  context.Context
+	conn net.Conn
+
+	ID  string `json:"id"`
+	UID string `json:"UID"`
+
+	connectProperties *session.ConnectProperties
+
+	cancel context.CancelCauseFunc
+
+	handler []Handler
+
+	state state.State
+
+	component *component
+
+	packetIDFactory client.PacketIDGenerator
+
+	publishBucket *rate.Bucket
+	messages      chan pkg.Message
+
+	topicManager *sub_topic.Topics
+
+	shareTopic map[string]struct{}
+
+	packetIdentifierIDTopic *PacketIDTopic
+
+	QoS2 *QoS2ReceiveStore
+
+	topicAliasFromClient map[uint16]string
+
+	willFlag  bool
+	keepAlive time.Duration
+	aliveTime time.Time
 }
 
 func NewClient(conn net.Conn, option ...Component) *Client {
@@ -66,7 +81,7 @@ func NewClient(conn net.Conn, option ...Component) *Client {
 			UID:                     uuid.NewString(),
 			conn:                    conn,
 			component:               new(component),
-			packetIdentifierIDTopic: map[uint16]string{},
+			packetIdentifierIDTopic: NewPacketIDTopic(),
 			topicAliasFromClient:    map[uint16]string{},
 			shareTopic:              map[string]struct{}{},
 		}
@@ -84,7 +99,7 @@ func NewClient(conn net.Conn, option ...Component) *Client {
 func (c *Client) Run(ctx context.Context, handler Handler) {
 	ctx = context.WithValue(ctx, pkg.ClientUIDKey, c.UID)
 	c.ctx, c.cancel = context.WithCancelCause(ctx)
-	c.topicManager = topic.NewManager(c.ctx)
+	c.topicManager = sub_topic.NewTopics(c.ctx)
 	c.handler = []Handler{
 		handler,
 		newClientHandler(c),
@@ -103,7 +118,7 @@ func (c *Client) Run(ctx context.Context, handler Handler) {
 			return
 		}
 		for _, handler := range c.handler {
-			if err := handler.HandlePacket(nil, controlPacket, c); err != nil {
+			if err := handler.HandlePacket(context.TODO(), controlPacket, c); err != nil {
 				logger.Logger.Warn("handle packet error", zap.Error(err), zap.String("client", c.MetaString()))
 				c.CloseIgnoreError()
 				break
@@ -116,20 +131,18 @@ func (c *Client) AddTopics(topic map[string]topic2.Topic) {
 	c.mux.Lock()
 	defer c.mux.Unlock()
 	for topicName, t := range topic {
-		c.topicManager.AddTopic(topicName, t)
+		if err := c.topicManager.AddTopic(topicName, t); err != nil {
+			logger.Logger.Error("add topic error", zap.Error(err), zap.String("client", c.MetaString()), zap.Any("topic", t))
+		}
 	}
-}
-
-func (c *Client) readUnfinishedMessage(topic string) []*packet.Message {
-	if c.component.session == nil {
-		logger.Logger.Warn("session is nil", zap.String("client", c.MetaString()))
-		return nil
-	}
-	return c.component.session.ReadTopicUnFinishedMessage(topic)
 }
 
 func (c *Client) Close() error {
-	return c.conn.Close()
+	err := c.conn.Close()
+	if errors.Is(err, net.ErrClosed) {
+		return nil
+	}
+	return err
 }
 
 func (c *Client) CloseIgnoreError() {
@@ -222,16 +235,24 @@ func (c *Client) SetID(id string) {
 	c.ID = id
 }
 
-func (c *Client) WritePacket(packet packets.Packet) error {
+func (c *Client) WritePacket(packet *client.WritePacket) error {
 	if packet == nil {
-		return nil
+		return fmt.Errorf("packet is nil")
 	}
+
+	if _, ok := packet.Packet.(*packets.Publish); ok {
+		//  get token before a written packet
+		c.publishBucket.GetToken()
+	}
+
+	// try lock after get token
 	c.mux.Lock()
 	defer c.mux.Unlock()
+
 	return c.writePacket(packet)
 }
 
-func (c *Client) writePacket(packet packets.Packet) error {
+func (c *Client) writePacket(packet *client.WritePacket) error {
 	var (
 		buf              = pool.ByteBufferPool.Get()
 		prepareWriteSize int64
@@ -242,7 +263,7 @@ func (c *Client) writePacket(packet packets.Packet) error {
 	defer pool.ByteBufferPool.Put(buf)
 	// publishAck, subscribeAck, unsubscribeAck should use the same packetID as the original packet
 
-	switch p := packet.(type) {
+	switch p := packet.Packet.(type) {
 
 	case *packets.Connack:
 		// do plugin
@@ -257,20 +278,9 @@ func (c *Client) writePacket(packet packets.Packet) error {
 		c.component.plugin.DoSendUnsubAck(c.ID, p)
 
 	case *packets.Publish:
-		if p.QoS != broker.QoS0 {
-			// request publish bucket
-			select {
-			case <-c.ctx.Done():
-				return c.ctx.Err()
-			case <-c.publishBucket.GetToken():
-			}
-		}
 		// do plugin
 		c.component.plugin.DoSendPublish(c.ID, p)
-		topicName = p.Topic
-		// generate new packetID and store
-		p.PacketID = c.NextPacketID()
-		c.packetIdentifierIDTopic[p.PacketID] = p.Topic
+		c.packetIdentifierIDTopic.SePacketIDTopic(p.PacketID, packet.FullTopic)
 		logger.Logger.Debug("publish to client", zap.Any("packet", p), zap.Uint16("packetID", p.PacketID), zap.String("client", c.MetaString()), zap.String("store", p.Topic))
 
 	case *packets.Puback:
@@ -296,7 +306,7 @@ func (c *Client) writePacket(packet packets.Packet) error {
 
 	}
 
-	if prepareWriteSize, err = packet.WriteTo(buf); err != nil {
+	if prepareWriteSize, err = packet.Packet.WriteTo(buf); err != nil {
 		logger.Logger.Info("write packet error", zap.Error(err), zap.String("client", c.MetaString()))
 		// TODO: check maximum packet size should close client ?
 	}
@@ -389,6 +399,7 @@ func (c *Client) MetaString() string {
 
 func (c *Client) Meta() *model.Meta {
 	return &model.Meta{
+		ID:        c.ID,
 		AliveTime: c.aliveTime,
 		KeepAlive: c.keepAlive.String(),
 		Topic:     c.topicManager.Meta(),

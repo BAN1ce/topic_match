@@ -24,7 +24,7 @@ type SubCenter interface {
 	CreateSub(clientID string, topics []packets.SubOptions) error
 	DeleteSub(clientID string, topics []string) error
 	Match(topic string) (clientIDQos map[string]int32)
-	DeleteClient(clientID string)
+	DeleteClient(clientID string) (err error)
 	MatchTopic(topic string) (topics map[string]int32)
 }
 

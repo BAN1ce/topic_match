@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"github.com/BAN1ce/skyTree/api"
 	"github.com/BAN1ce/skyTree/config"
+	"github.com/BAN1ce/skyTree/inner/broker/client"
 	"github.com/BAN1ce/skyTree/inner/broker/core"
 	"github.com/BAN1ce/skyTree/inner/broker/retain"
 	"github.com/BAN1ce/skyTree/inner/broker/session"
-	"github.com/BAN1ce/skyTree/inner/broker/share"
 	"github.com/BAN1ce/skyTree/inner/broker/state"
 	"github.com/BAN1ce/skyTree/inner/broker/store"
 	"github.com/BAN1ce/skyTree/inner/broker/store/db"
 	"github.com/BAN1ce/skyTree/inner/broker/store/message"
+	"github.com/BAN1ce/skyTree/inner/broker/subscription"
 	"github.com/BAN1ce/skyTree/inner/event"
 	"github.com/BAN1ce/skyTree/inner/facade"
 	"github.com/BAN1ce/skyTree/inner/metric"
@@ -53,9 +54,8 @@ func NewApp() *App {
 	//	log.Fatal("start store cluster failed", err)
 	//}
 	var (
-		clientManager = core.NewClientManager()
-	)
-	var (
+		clientManager = client.NewClients()
+
 		localNutsDBStore = db.NewLocalStore(nutsdb.Options{
 			EntryIdxMode: nutsdb.HintKeyValAndRAMIdxMode,
 			SegmentSize:  nutsdb.MB * 256,
@@ -66,15 +66,14 @@ func NewApp() *App {
 
 		keyVStore = localNutsDBStore
 		//keyVStore = db.NewRedis()
-	)
-	var (
 		sessionManager = session.NewSessions(keyVStore)
+
+		subscriptionCore = broker2.NewLocalSubCenter()
 	)
 	event.Boot()
-	store.Boot(localNutsDBStore, event.GlobalEvent)
+	store.Boot(localNutsDBStore, event.StoreEvent)
 	var (
-		storeWrapper     = message.NewStoreWrapper(localNutsDBStore, event.GlobalEvent)
-		shareTopicManger = share.NewManager(storeWrapper)
+		storeWrapper = message.NewStoreWrapper(localNutsDBStore, event.StoreEvent)
 	)
 
 	// TODO: fix this
@@ -92,8 +91,7 @@ func NewApp() *App {
 			core.WithState(state.NewState(keyVStore)),
 			core.WithSessionManager(sessionManager),
 			core.WithClientManager(clientManager),
-			core.WithShareManager(shareTopicManger),
-			core.WithSubCenter(broker2.NewLocalSubCenter()),
+			core.WithSubCenter(subscription.NewWrapper(subscriptionCore)),
 			core.WithHandlers(&core.Handlers{
 				Connect:     core.NewConnectHandler(),
 				Publish:     core.NewPublishHandler(),

@@ -21,6 +21,7 @@ type Message struct {
 	ExpiredTime   int64
 	Will          bool
 	State         int
+	ShareTopic    string
 }
 
 func (m *Message) SetSubIdentifier(id byte) {

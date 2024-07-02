@@ -100,9 +100,11 @@ func (mr *MockSubCenterMockRecorder) CreateSub(clientID, topics interface{}) *go
 }
 
 // DeleteClient mocks base method.
-func (m *MockSubCenter) DeleteClient(clientID string) {
+func (m *MockSubCenter) DeleteClient(clientID string) error {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "DeleteClient", clientID)
+	ret := m.ctrl.Call(m, "DeleteClient", clientID)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // DeleteClient indicates an expected call of DeleteClient.

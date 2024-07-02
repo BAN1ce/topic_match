@@ -1,0 +1,130 @@
+package sub_topic
+
+import (
+	"github.com/BAN1ce/skyTree/logger"
+	"github.com/BAN1ce/skyTree/pkg/broker/client"
+	"github.com/BAN1ce/skyTree/pkg/packet"
+	"github.com/BAN1ce/skyTree/pkg/retry"
+	"github.com/eclipse/paho.golang/packets"
+	"github.com/zyedidia/generic/list"
+	"go.uber.org/zap"
+	"sync"
+)
+
+type WithRetryClient struct {
+	client *Client
+	queue  *list.List[*packet.Message]
+	retry  retry.MessageRetry
+	mux    sync.RWMutex
+}
+
+func NewQoSWithRetry(client *Client, messageRetry retry.MessageRetry) *WithRetryClient {
+	return &WithRetryClient{
+		client: client,
+		queue:  list.New[*packet.Message](),
+		retry:  messageRetry,
+	}
+}
+
+func (r *WithRetryClient) Publish(publish *packet.Message) error {
+	r.mux.Lock()
+	defer r.mux.Unlock()
+
+	publish.PublishPacket.PacketID = r.client.writer.NextPacketID()
+	r.queue.PushBack(publish)
+	return r.client.Publish(publish)
+}
+
+func (r *WithRetryClient) HandlePublishAck(pubAck *packets.Puback) (ok bool, err error) {
+	r.mux.Lock()
+	defer r.mux.Unlock()
+
+	node := r.queue.Front
+	for node != nil {
+		if node.Value.PublishPacket.PacketID == pubAck.PacketID {
+			logger.Logger.Debug("WithRetryClient: remove publish message from queue", zap.Uint16("packetID", pubAck.PacketID))
+			// TODO : delete retry task
+			r.queue.Remove(node)
+			break
+		}
+		node = node.Next
+	}
+	return r.client.HandlePublishAck(pubAck)
+}
+
+func (r *WithRetryClient) GetPacketWriter() client.PacketWriter {
+	return r.client.GetPacketWriter()
+}
+
+func (r *WithRetryClient) PubRel(message *packet.Message) error {
+	// TODO: need retry ?
+	return r.client.PubRel(message)
+}
+
+func (r *WithRetryClient) GetUnFinishedMessage() []*packet.Message {
+	r.mux.RLock()
+	defer r.mux.RUnlock()
+
+	var (
+		unFinish []*packet.Message
+	)
+	r.queue.Front.Each(func(val *packet.Message) {
+		unFinish = append(unFinish, val)
+	})
+	return unFinish
+}
+
+func (r *WithRetryClient) HandlePublishRec(pubRec *packets.Pubrec) (ok bool, err error) {
+	r.mux.Lock()
+	defer r.mux.Unlock()
+
+	var (
+		node    = r.queue.Front
+		message *packet.Message
+	)
+	for node != nil {
+		if node.Value.PublishPacket.PacketID == pubRec.PacketID {
+			message = node.Value
+			logger.Logger.Debug("WithRetryClient: mark publish message be received", zap.Uint16("packetID", pubRec.PacketID))
+			node.Value.PubReceived = true
+			r.client.HandlePublishRec(pubRec)
+			pubRel := packet.NewPublishRel()
+			pubRel.PacketID = pubRec.PacketID
+			message.PubRelPacket = pubRel
+			logger.Logger.Debug("WithRetryClient: send pubRel", zap.Uint16("packetID", pubRec.PacketID))
+			if err := r.client.PubRel(message); err != nil {
+				logger.Logger.Info("WithRetryClient: pubRel failed", zap.Error(err))
+			}
+			ok = true
+			return ok, err
+		}
+		node = node.Next
+	}
+
+	logger.Logger.Warn("WithRetryClient: pubRec not found", zap.Uint16("packetID", pubRec.PacketID))
+
+	return ok, err
+}
+
+func (r *WithRetryClient) HandelPublishComp(pubComp *packets.Pubcomp) (ok bool, err error) {
+	r.mux.Lock()
+	defer r.mux.Unlock()
+
+	node := r.queue.Front
+	for node != nil {
+		if node.Value.PublishPacket.PacketID == pubComp.PacketID {
+			logger.Logger.Debug("WithRetryClient: remove publish message from queue with pubComp", zap.Uint16("packetID", pubComp.PacketID))
+			node.Value.PubReceived = true
+			// TODO : delete retry task
+			r.queue.Remove(node)
+			return r.client.HandelPublishComp(pubComp)
+		}
+		node = node.Next
+	}
+	logger.Logger.Warn("WithRetryClient: pubComp not found", zap.Uint16("packetID", pubComp.PacketID))
+	return false, err
+}
+
+func (r *WithRetryClient) Close() error {
+	return nil
+}

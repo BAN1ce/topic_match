@@ -12,4 +12,3 @@ message GetSubTopicResponse {
   BaseResponse base = 1;
   repeated string subTopic = 2;
 }
-message Get

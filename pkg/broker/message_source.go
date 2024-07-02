@@ -6,11 +6,14 @@ import (
 )
 
 type MessageSource interface {
-	NextMessages(ctx context.Context, n int, startMessageID string, include bool) ([]*packet.Message, int, error)
-	ListenMessage(ctx context.Context) (<-chan *packet.Message, error)
-	Close() error
+	ReadMessageSource
+	StreamSource
+}
+
+type ReadMessageSource interface {
+	NextMessages(ctx context.Context, n int, startMessageID string, include bool) ([]*packet.Message, error)
 }
 
 type StreamSource interface {
-	ListenMessage(ctx context.Context) (<-chan *packet.Message, error)
+	ListenMessage(ctx context.Context, writer chan *packet.Message) error
 }

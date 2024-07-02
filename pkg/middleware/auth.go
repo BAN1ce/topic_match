@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"github.com/BAN1ce/skyTree/inner/broker/client"
+	client2 "github.com/BAN1ce/skyTree/pkg/broker/client"
 	"github.com/BAN1ce/skyTree/pkg/errs"
 	"github.com/eclipse/paho.golang/packets"
 )
@@ -29,6 +30,8 @@ func (a *Auth) Handle(client *client.Client, packet *packets.ControlPacket) erro
 		return err
 	}
 	rsp.ReasonCode = 0x00
-	client.WritePacket(rsp)
+	client.WritePacket(&client2.WritePacket{
+		Packet: rsp,
+	})
 	return nil
 }

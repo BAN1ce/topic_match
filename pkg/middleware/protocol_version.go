@@ -3,6 +3,7 @@ package middleware
 import (
 	"github.com/BAN1ce/skyTree/inner/broker/client"
 	"github.com/BAN1ce/skyTree/logger"
+	client2 "github.com/BAN1ce/skyTree/pkg/broker/client"
 	"github.com/BAN1ce/skyTree/pkg/errs"
 	"github.com/eclipse/paho.golang/packets"
 )
@@ -19,7 +20,9 @@ func (p *ProtocolVersion) Handle(client *client.Client, packet *packets.ControlP
 	if con.ProtocolVersion != 0x05 || con.ProtocolName != `MQTT` {
 		connAck := packets.NewControlPacket(packets.CONNACK).Content.(*packets.Connack)
 		connAck.ReasonCode = packets.ConnackProtocolError
-		client.WritePacket(connAck)
+		client.WritePacket(&client2.WritePacket{
+			Packet: connAck,
+		})
 		return errs.ErrProtocolNotSupport
 	}
 	return nil

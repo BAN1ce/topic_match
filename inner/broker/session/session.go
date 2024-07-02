@@ -40,7 +40,7 @@ func (s *Session) Release() {
 	}
 }
 
-// ----------------------------------------------------------------- Sub Topic ----------------------------------------------------------------- //
+// ----------------------------------------------------------------- Sub topic ----------------------------------------------------------------- //
 
 // ReadSubTopics returns all sub topics of the client.
 func (s *Session) ReadSubTopics() (topics []topic.Meta) {
@@ -92,7 +92,7 @@ func (s *Session) DeleteSubTopic(topic string) {
 	}
 }
 
-// ----------------------------------------------------------------- Topic Latest Pushed Message ----------------------------------------------------------------- //
+// ----------------------------------------------------------------- topic Latest Pushed Message ----------------------------------------------------------------- //
 
 func (s *Session) ReadTopicLatestPushedMessageID(topic string) (messageID string, ok bool) {
 	id, _, err := s.store.DefaultReadKey(clientLatestAckedMessageKey(s.clientID, topic))
@@ -117,7 +117,7 @@ func (s *Session) DeleteTopicLatestPushedMessageID(topic string, messageID strin
 	}
 }
 
-// ----------------------------------------------------------------- Topic UnFinished Message ----------------------------------------------------------------- //
+// ----------------------------------------------------------------- topic UnFinished Message ----------------------------------------------------------------- //
 
 func (s *Session) CreateTopicUnFinishedMessage(topic string, message []*packet.Message) {
 	prefix := clientUnfinishedMessageKey(s.clientID, topic)
