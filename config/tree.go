@@ -44,12 +44,12 @@ func GetTree() Tree {
 			HeartbeatRTT: 1,
 			CheckQuorum:  true,
 			// SnapshotEntries determines how often should we take a snapshot of the
-			// replicated state machine, it is set to 10 her which means a snapshot
+			// replicated inner machine, it is set to 10 her which means a snapshot
 			// will be captured for every 10 applied proposals (writes).
 			// In your real world application, it should be set to much higher values
 			// You need to determine a suitable value based on how much space you are
 			// willing use on Raft Logs, how fast can you capture a snapshot of your
-			// replicated state machine, how often such snapshot is going to be used
+			// replicated inner machine, how often such snapshot is going to be used
 			// etc.
 			SnapshotEntries: 10,
 			// Once a snapshot is captured and saved, how many Raft entries already

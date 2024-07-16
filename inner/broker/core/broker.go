@@ -160,7 +160,7 @@ func (b *Broker) HandlePacket(ctx context.Context, packet *packets.ControlPacket
 	logger.Logger.Debug("Handle Receive Packet", zap.String("client", client.MetaString()), zap.Any("packet", packet))
 
 	// TODO: emit event with packet.Content pointer to avoid copy ?  but need to check if it is safe.
-	event.GlobalEvent.EmitClientMQTTEvent(packet.FixedHeader.Type, packet.Content)
+	event.MQTTEvent.EmitReceivedMQTTPacketEvent(packet.FixedHeader.Type)
 	switch packet.FixedHeader.Type {
 	case packets.CONNECT:
 		err = b.handlers.Connect.Handle(b, client, packet)
@@ -217,7 +217,7 @@ func (b *Broker) CreateClient(client *client.Client) {
 	b.mux.Lock()
 	b.clientManager.CreateClient(client)
 
-	event.GlobalEvent.EmitClientCountState(b.clientManager.Count())
+	event.ClientEvent.EmitClientCountState(b.clientManager.Count())
 	b.mux.Unlock()
 
 }
@@ -231,11 +231,12 @@ func (b *Broker) deleteClient(uid string) {
 	var ctx, cancel = context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	event.GlobalEvent.EmitClientCountState(b.clientManager.Count())
+	event.ClientEvent.EmitClientCountState(b.clientManager.Count())
 
-	event.GlobalEvent.EmitClientDeleteSuccess(uid)
+	event.ClientEvent.EmitClientDeleteSuccess(uid)
 
 	logger.Logger.Debug("broker delete deleteClient", zap.String("uid", uid))
+
 	b.clientManager.DestroyClient(uid)
 
 	if err := b.clientKeepAliveMonitor.DeleteClient(ctx, uid); err != nil {
@@ -262,7 +263,7 @@ func (b *Broker) NotifyWillMessage(willMessage *session.WillMessage) {
 	)
 	logger.Logger.Info("notify will message", zap.String("topic", willMessage.Topic))
 
-	event.GlobalEvent.EmitReceivedPublishDone(willMessage.Topic, publishMessage)
+	event.MessageEvent.EmitReceivedPublishDone(willMessage.Topic, publishMessage)
 
 	topics := b.subTree.MatchTopic(willMessage.Topic)
 
@@ -334,7 +335,6 @@ func (b *Broker) ReadTopic(topic string) (*model.Topic, error) {
 
 // CloseExpiredClient close expired client
 func (b *Broker) CloseExpiredClient(uid []string) {
-	return
 	//logger.Logger.Info("close expired client", zap.Strings("uid", uid))
 	//for _, id := range uid {
 	//	b.DeleteClient(id)

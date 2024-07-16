@@ -49,6 +49,10 @@ func (c *Client) Publish(publish *packet.Message) error {
 		fullTopic = publish.ShareTopic
 	}
 
+	if publish.FromTopic != "" {
+		fullTopic = publish.FromTopic
+	}
+
 	return c.writer.WritePacket(&client.WritePacket{
 		Packet:    publishPacket,
 		FullTopic: fullTopic,

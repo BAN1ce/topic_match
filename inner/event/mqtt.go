@@ -1,67 +1,142 @@
 package event
 
 import (
+	"github.com/BAN1ce/skyTree/inner/metric"
 	"github.com/BAN1ce/skyTree/logger"
-	"github.com/BAN1ce/skyTree/pkg/utils"
 	"github.com/eclipse/paho.golang/packets"
-	"github.com/kataras/go-events"
 )
 
 type MQTTEventName = string
 
 const (
-	Connect        MQTTEventName = "event.connect"
-	Disconnect     MQTTEventName = "event.disconnect"
-	Ping           MQTTEventName = "event.ping"
-	Pong           MQTTEventName = "event.pong"
-	Subscribe      MQTTEventName = "event.subscribe"
-	SubscribeAck   MQTTEventName = "event.subscribe_ack"
-	Unsubscribe    MQTTEventName = "event.unsubscribe"
-	UnsubscribeAck MQTTEventName = "event.unsubscribe_ack"
-
-	ClientPublish         MQTTEventName = "event.client.publish"
-	ClientPubAck          MQTTEventName = "event.client.puback"
-	ClientPubRel          MQTTEventName = "event.client.pubrel"
-	ClientPubRec          MQTTEventName = "event.client.pubrec"
-	ClientPubComp         MQTTEventName = "event.client.pubcomp"
-	ClientPublishTopic    MQTTEventName = "event.client.publish_topic"
-	BrokerPublish         MQTTEventName = "event.store.publish"
-	BrokerPublishToClient MQTTEventName = "event.store.publish_to_client"
-	ClientPublishAck      MQTTEventName = "event.client.publish_ack"
-	BrokerPublishAck      MQTTEventName = "event.store.publish_ack"
-	ClientAuth            MQTTEventName = "event.client.auth"
-	BrokerAuth            MQTTEventName = "event.store.auth"
+	MQTTReceivedPacketEvent MQTTEventName = "event.received.mqtt.packet"
+	MQTTSendPacketEvent     MQTTEventName = "event.send.mqtt.packet"
 )
 
 var (
-	packetTypeNumberMap = map[byte]MQTTEventName{
-		packets.CONNECT:    Connect,
-		packets.DISCONNECT: Disconnect,
-		packets.PINGREQ:    Ping,
-		packets.PINGRESP:   Pong,
-		packets.SUBSCRIBE:  Subscribe,
-		packets.SUBACK:     SubscribeAck,
-
-		packets.UNSUBSCRIBE: Unsubscribe,
-		packets.UNSUBACK:    UnsubscribeAck,
-
-		packets.PUBLISH: ClientPublish,
-		packets.PUBACK:  ClientPubAck,
-		packets.PUBREL:  ClientPubRel,
-		packets.PUBREC:  ClientPubRec,
-		packets.PUBCOMP: ClientPubComp,
-		packets.AUTH:    ClientAuth,
-	}
+	MQTTEvent = newMQTT()
 )
 
-func (e *Event) EmitClientMQTTEvent(packetType byte, packet packets.Packet) {
-	if event, ok := packetTypeNumberMap[packetType]; ok {
-		Driver.Emit(events.EventName(event), packet)
-		return
-	}
-	logger.Logger.Error("unknown packet type")
+type MQTT struct {
 }
 
-func ReceivedTopicPublishEventName(topic string) events.EventName {
-	return utils.WithEventPrefix(ClientPublishTopic, topic)
+func newMQTT() *MQTT {
+	m := &MQTT{}
+
+	return m
+
+}
+
+func (e *MQTT) EmitReceivedMQTTPacketEvent(packetType byte) {
+	eventDriver.Emit(MQTTReceivedPacketEvent, packetType)
+}
+
+func (e *MQTT) EmitSendMQTTPacketEvent(packetType byte) {
+	eventDriver.Emit(MQTTSendPacketEvent, packetType)
+}
+
+func (e *MQTT) addDefaultListener() {
+	e.registerReceivedMetric()
+	e.registerSendMetric()
+}
+
+func (e *MQTT) registerReceivedMetric() {
+	eventDriver.AddListener(MQTTReceivedPacketEvent, func(i ...interface{}) {
+		if len(i) != 1 {
+			logger.Logger.Error("invalid parameter")
+			return
+		}
+
+		event, ok := i[0].(byte)
+		if !ok {
+			return
+		}
+
+		switch event {
+		case packets.CONNECT:
+			metric.ReceivedConnect.Inc()
+
+		case packets.DISCONNECT:
+			metric.ReceivedDisconnect.Inc()
+
+		case packets.PINGREQ:
+			metric.ReceivedPing.Inc()
+
+		case packets.SUBSCRIBE:
+			metric.ReceivedSubscription.Inc()
+
+		case packets.UNSUBSCRIBE:
+			metric.ReceivedUnsubscription.Inc()
+
+		case packets.PUBLISH:
+			metric.ReceivedPublish.Inc()
+
+		case packets.PUBACK:
+			metric.ReceivedPublishAck.Inc()
+
+		case packets.PUBCOMP:
+			metric.ReceivedPubComp.Inc()
+
+		case packets.PUBREC:
+			metric.ReceivedPubRec.Inc()
+
+		case packets.PUBREL:
+			metric.ReceivedPubRel.Inc()
+
+		case packets.AUTH:
+			metric.ReceivedAuth.Inc()
+		default:
+			logger.Logger.Error("unknown packet type")
+		}
+
+	})
+}
+
+func (e *MQTT) registerSendMetric() {
+	eventDriver.AddListener(MQTTSendPacketEvent, func(i ...interface{}) {
+		if len(i) != 1 {
+			logger.Logger.Error("invalid parameter")
+			return
+		}
+
+		event, ok := i[0].(byte)
+		if !ok {
+			return
+		}
+
+		switch event {
+
+		case packets.DISCONNECT:
+			metric.SendDisconnect.Inc()
+
+		case packets.PINGRESP:
+			metric.SendPong.Inc()
+
+		case packets.SUBACK:
+			metric.SendSubscriptionAck.Inc()
+
+		case packets.UNSUBACK:
+			metric.SendUnsubscriptionAck.Inc()
+
+		case packets.PUBLISH:
+			metric.SendPublish.Inc()
+
+		case packets.PUBACK:
+			metric.SendPublishAck.Inc()
+
+		case packets.PUBCOMP:
+			metric.SendPubComp.Inc()
+
+		case packets.PUBREC:
+			metric.SendPubRec.Inc()
+
+		case packets.PUBREL:
+			metric.SendPubRel.Inc()
+
+		case packets.AUTH:
+			metric.SendAuthAck.Inc()
+		default:
+			logger.Logger.Error("unknown packet type")
+		}
+	})
 }

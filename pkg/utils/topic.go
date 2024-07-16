@@ -3,23 +3,41 @@ package utils
 import (
 	"github.com/BAN1ce/Tree/proto"
 	"github.com/eclipse/paho.golang/packets"
+	"github.com/google/uuid"
+	"math/rand"
 	"strings"
+	"time"
 )
 
 func SplitTopic(topic string) []string {
-	tmp := strings.Split(strings.Trim(topic, "/"), "/")
-	for _, v := range tmp {
-		if v == "" {
-			result := make([]string, 0)
-			for _, v := range tmp {
-				if v != "" {
-					result = append(result, v)
-				}
-			}
-			return result
-		}
+	if len(topic) == 0 {
+		return nil
 	}
-	return tmp
+	var result = make([]string, 0, 30)
+	if strings.Index(topic, "/") == 0 {
+		result = append(result, "/")
+	}
+
+	tmp := strings.Split(strings.Trim(topic, "/"), "/")
+
+	for _, v := range tmp {
+		result = append(result, v)
+	}
+
+	return result
+
+	//for _, v := range tmp {
+	//	if v == "" {
+	//		result := make([]string, 0)
+	//		for _, v := range tmp {
+	//			if v != "" {
+	//				result = append(result, v)
+	//			}
+	//		}
+	//		return result
+	//	}
+	//}
+	//return tmp
 }
 
 // nolint
@@ -56,4 +74,26 @@ func SubOptionToProtoSubOption(options *packets.SubOptions) *proto.SubOption {
 		NoLocal:           options.NoLocal,
 		RetainAsPublished: options.RetainAsPublished,
 	}
+}
+
+func RandomWildcardTopic() string {
+	var (
+		result       = "/"
+		randomLength = rand.Intn(20)
+	)
+
+	for i := 0; i < randomLength; i++ {
+		switch time.Now().Nanosecond() % 3 {
+		case 0:
+			result += "/+"
+		case 1:
+			result += "/#"
+			return result
+		case 2:
+			result += "/" + uuid.NewString()
+
+		}
+
+	}
+	return result
 }

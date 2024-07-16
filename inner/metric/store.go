@@ -13,8 +13,8 @@ var (
 		Help: "The total number of messages read from the store",
 	})
 
-	StoreReadRequestFailed = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "store_read_request_failed",
+	StoreReadRequestFailedCount = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "store_read_request_failed_count",
 		Help: "The total number of failed read requests to the store",
 	})
 
@@ -25,18 +25,28 @@ var (
 			0.05, 0.1, 0.5, 1, 2, 5, 10,
 		},
 	})
+
+	StoreReadRequestCount = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "store_read_request_count",
+		Help: "The total number of read requests to the store",
+	})
 )
 
 // Store Save
 
 var (
-	StoreStoreRequestFailed = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "store_store_request_failed",
+	StoreWriteRequestFailedCount = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "store_write_request_failed_count",
 		Help: "The total number of failed store requests to the store",
 	})
 
-	StoreStoreDuration = promauto.NewHistogram(prometheus.HistogramOpts{
-		Name: "store_store_duration",
+	StoreWriteRequestCount = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "store_write_request_count",
+		Help: "The total number of store requests to the store",
+	})
+
+	StoreWriteDuration = promauto.NewHistogram(prometheus.HistogramOpts{
+		Name: "store_write_duration",
 		Help: "The duration of store requests to the store",
 		Buckets: []float64{
 			0.05, 0.1, 0.5, 1, 2, 5, 10,
@@ -47,8 +57,8 @@ var (
 // Store Delete metric
 
 var (
-	StoreDeleteRequestFailed = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "store_delete_request_failed",
+	StoreDeleteRequestFailedCount = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "store_delete_request_failed_count",
 		Help: "The total number of failed delete requests to the store",
 	})
 
@@ -58,5 +68,10 @@ var (
 		Buckets: []float64{
 			0.05, 0.1, 0.5, 1, 2, 5, 10,
 		},
+	})
+
+	StoreDeleteRequestCount = promauto.NewCounter(prometheus.CounterOpts{
+		Name: "store_delete_request_count",
+		Help: "The total number of delete requests to the store",
 	})
 )

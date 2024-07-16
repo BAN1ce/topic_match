@@ -10,6 +10,7 @@ import (
 var (
 	DefaultMessageStore      broker.TopicMessageStore
 	DefaultMessageStoreEvent broker.MessageStoreEvent
+
 	DefaultSerializerVersion serializer.SerialVersion
 
 	DefaultShareMessageStore *share.TopicMessageSourceFactory
@@ -19,6 +20,5 @@ func Boot(store broker.TopicMessageStore, event broker.MessageStoreEvent) {
 	DefaultMessageStore = store
 	DefaultMessageStoreEvent = event
 	DefaultSerializerVersion = serializer.ProtoBufVersion
-
 	DefaultShareMessageStore = share.NewTopicMessageSourceFactory(context.TODO(), store, event)
 }

@@ -82,6 +82,7 @@ func (q *QoS1) listenPublishChan() {
 			msg.SetSubIdentifier(byte(q.meta.Identifier))
 			msg.PublishPacket.QoS = broker.QoS1
 			msg.PublishPacket.PacketID = q.client.GetPacketWriter().NextPacketID()
+			msg.FromTopic = q.meta.Topic
 			if err := q.client.Publish(msg); err != nil {
 				logger.Logger.Warn("QoS1Subscriber: publish error = ", zap.Error(err))
 			}

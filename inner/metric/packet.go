@@ -9,11 +9,11 @@ import (
 
 var (
 	ReceivedConnect = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "received_connect",
+		Name: "mqtt_received_connect",
 	})
 
 	SendConnectAck = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "send_connect_ack",
+		Name: "mqtt_send_connect_ack",
 	})
 )
 
@@ -21,11 +21,11 @@ var (
 
 var (
 	ReceivedSubscription = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "received_subscription",
+		Name: "mqtt_received_subscription",
 	})
 
 	SendSubscriptionAck = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "send_subscription_ack",
+		Name: "mqtt_send_subscription_ack",
 	})
 )
 
@@ -33,11 +33,11 @@ var (
 
 var (
 	ReceivedUnsubscription = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "received_unsubscription",
+		Name: "mqtt_received_unsubscription",
 	})
 
 	SendUnsubscriptionAck = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "send_unsubscription_ack",
+		Name: "mqtt_send_unsubscription_ack",
 	})
 )
 
@@ -45,11 +45,11 @@ var (
 
 var (
 	ReceivedPublish = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "receive_publish",
+		Name: "mqtt_receive_publish",
 	})
 
 	SendPublish = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "send_publish",
+		Name: "mqtt_send_publish",
 	})
 )
 
@@ -57,33 +57,35 @@ var (
 
 var (
 	SendPublishAck = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "send_publish_ack",
+		Name: "mqtt_send_publish_ack",
 	})
 
 	ReceivedPublishAck = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "received_publish_ack",
+		Name: "mqtt_received_publish_ack",
 	})
 )
 
 // Publish Rec
+
 var (
 	ReceivedPubRec = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "received_pubrec",
+		Name: "mqtt_received_pubrec",
 	})
 
 	SendPubRec = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "send_pubrec",
+		Name: "mqtt_send_pubrec",
 	})
 )
 
 // Publish Rel
+
 var (
 	ReceivedPubRel = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "received_pubrel",
+		Name: "mqtt_received_pubrel",
 	})
 
 	SendPubRel = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "send_pubrel",
+		Name: "mqtt_send_pubrel",
 	})
 )
 
@@ -91,21 +93,23 @@ var (
 
 var (
 	ReceivedPubComp = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "received_pubcomp",
+		Name: "mqtt_received_pubcomp",
 	})
 
 	SendPubComp = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "send_pubcomp",
+		Name: "mqtt_send_pubcomp",
 	})
 )
 
+// Auth
+
 var (
 	ReceivedAuth = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "received_auth",
+		Name: "mqtt_received_auth",
 	})
 
 	SendAuthAck = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "send_auth_ack",
+		Name: "mqtt_send_auth_ack",
 	})
 )
 
@@ -113,11 +117,11 @@ var (
 
 var (
 	ReceivedDisconnect = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "received_disconnect",
+		Name: "mqtt_received_disconnect",
 	})
 
 	SendDisconnect = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "send_disconnect",
+		Name: "mqtt_send_disconnect",
 	})
 )
 
@@ -125,10 +129,10 @@ var (
 
 var (
 	ReceivedPing = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "received_ping",
+		Name: "mqtt_received_ping",
 	})
 
 	SendPong = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "send_pong",
+		Name: "mqtt_send_pong",
 	})
 )

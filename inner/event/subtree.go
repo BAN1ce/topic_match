@@ -2,8 +2,6 @@ package event
 
 import (
 	"github.com/BAN1ce/skyTree/inner/metric"
-	"github.com/kataras/go-events"
-	"time"
 )
 
 const (
@@ -16,28 +14,21 @@ var (
 	SubtreeEvent = newSubTree()
 )
 
-type SubtreeEventData struct {
-	Duration     time.Duration
-	Success      bool
-	NoSubscriber bool
-}
-
 type Subtree struct {
 }
 
 func newSubTree() *Subtree {
 	s := &Subtree{}
-	s.registerMetric()
 	return s
 }
 
 func (s *Subtree) Emit(event string, data *SubtreeEventData) {
-	Driver.Emit(events.EventName(event), data)
+	eventDriver.Emit(event, data)
 }
 
-func (s *Subtree) registerMetric() {
+func (s *Subtree) addDefaultListener() {
 
-	Driver.AddListener(SubtreeWriteEvent, func(i ...interface{}) {
+	eventDriver.AddListener(SubtreeWriteEvent, func(i ...interface{}) {
 		if len(i) == 0 {
 			return
 		}
@@ -51,7 +42,7 @@ func (s *Subtree) registerMetric() {
 		}
 	})
 
-	Driver.AddListener(SubtreeReadEvent, func(i ...interface{}) {
+	eventDriver.AddListener(SubtreeReadEvent, func(i ...interface{}) {
 		if len(i) == 0 {
 			return
 		}
@@ -67,7 +58,7 @@ func (s *Subtree) registerMetric() {
 		metric.SubTreeReadNoSubscriber.Inc()
 	})
 
-	Driver.AddListener(SubtreeDeleteEvent, func(i ...interface{}) {
+	eventDriver.AddListener(SubtreeDeleteEvent, func(i ...interface{}) {
 		if len(i) == 0 {
 			return
 		}

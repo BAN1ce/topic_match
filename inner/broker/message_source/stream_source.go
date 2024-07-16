@@ -60,7 +60,7 @@ func (s *StreamSource) ListenMessage(ctx context.Context, writer chan *packet.Me
 
 	s.messageChan = writer
 	s.ctx, s.cancel = context.WithCancel(ctx)
-	s.publishListener.CreatePublishEvent(s.topic, s.handler)
+	s.publishListener.CreateListenPublishEvent(s.topic, s.handler)
 	return nil
 }
 

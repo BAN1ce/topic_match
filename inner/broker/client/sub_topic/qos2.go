@@ -90,6 +90,7 @@ func (q *QoS2) listenPublishChan() {
 				return
 			}
 			msg.SetSubIdentifier(byte(q.meta.Identifier))
+			msg.FromTopic = q.meta.Topic
 			if err := q.client.Publish(msg); err != nil {
 				logger.Logger.Warn("QoS2Subscriber: publish error = ", zap.Error(err))
 			}

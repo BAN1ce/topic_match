@@ -34,15 +34,15 @@ func (m *MockPublishListener) EXPECT() *MockPublishListenerMockRecorder {
 }
 
 // CreatePublishEvent mocks base method.
-func (m *MockPublishListener) CreatePublishEvent(topic string, handler func(...interface{})) {
+func (m *MockPublishListener) CreateListenPublishEvent(topic string, handler func(...interface{})) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "CreatePublishEvent", topic, handler)
+	m.ctrl.Call(m, "CreateListenPublishEvent", topic, handler)
 }
 
 // CreatePublishEvent indicates an expected call of CreatePublishEvent.
 func (mr *MockPublishListenerMockRecorder) CreatePublishEvent(topic, handler interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePublishEvent", reflect.TypeOf((*MockPublishListener)(nil).CreatePublishEvent), topic, handler)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateListenPublishEvent", reflect.TypeOf((*MockPublishListener)(nil).CreateListenPublishEvent), topic, handler)
 }
 
 // DeletePublishEvent mocks base method.

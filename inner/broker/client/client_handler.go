@@ -200,7 +200,7 @@ func (i *InnerHandler) HandleUnsub(unsubscribe *packets.Unsubscribe) error {
 
 func (i *InnerHandler) HandlePublish(publish *packets.Publish) error {
 	if publish.QoS != broker.QoS2 {
-		event.GlobalEvent.EmitReceivedPublishDone(publish.Topic, &packet.Message{
+		event.MessageEvent.EmitReceivedPublishDone(publish.Topic, &packet.Message{
 			PublishPacket: publish,
 		})
 	}

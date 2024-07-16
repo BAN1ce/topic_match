@@ -31,7 +31,7 @@ func (c *ConnectHandler) Handle(broker *Broker, client *client2.Client, rawPacke
 
 	defer func() {
 		// emit client connect result event
-		event.GlobalEvent.EmitClientConnectResult(client.GetUid(), err == nil)
+		event.ClientEvent.EmitClientConnectResult(client.GetUid(), err == nil)
 	}()
 
 	// check received connect packet

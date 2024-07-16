@@ -32,7 +32,7 @@ func (p *PublishRel) Handle(broker *Broker, client *client.Client, rawPacket *pa
 		return client.WritePacket(client2.NewWritePacket(publishComp))
 	} else {
 		// Emit event
-		event.GlobalEvent.EmitReceivedPublishDone(publishPacket.Topic, &packet2.Message{
+		event.MessageEvent.EmitReceivedPublishDone(publishPacket.Topic, &packet2.Message{
 			PublishPacket: publishPacket,
 		})
 	}

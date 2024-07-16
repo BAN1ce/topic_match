@@ -79,7 +79,7 @@ func (p *PublishHandler) Handle(broker *Broker, client *client.Client, rawPacket
 	if packet.QoS != broker2.QoS2 {
 		subTopics = broker.subTree.MatchTopic(topic)
 		// Emit received publish event
-		event.GlobalEvent.EmitReceivedPublishDone(topic, publishMessage)
+		event.MessageEvent.EmitReceivedPublishDone(topic, publishMessage)
 	}
 
 	// double check topic name

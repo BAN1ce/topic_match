@@ -12,39 +12,51 @@ const (
 
 	ClientDeleteSuccess = "event.client.delete.success"
 
-	ClientOCountState = "event.client.count.state"
+	ClientOCountState = "event.client.count.inner"
 )
 
-func (e *Event) EmitClientConnectResult(uid string, ok bool) {
+var (
+	ClientEvent = newClientEvent()
+)
 
-	Driver.Emit(ClientConnect)
+type Client struct {
+}
+
+func newClientEvent() *Client {
+	c := &Client{}
+
+	return c
+}
+
+func (c *Client) EmitClientConnectResult(uid string, ok bool) {
+
+	eventDriver.Emit(ClientConnect)
 	if ok {
-		Driver.Emit(ClientCreateSuccess, uid)
+		eventDriver.Emit(ClientCreateSuccess, uid)
 	} else {
-		Driver.Emit(ClientCreateFailed, uid)
+		eventDriver.Emit(ClientCreateFailed, uid)
 	}
 }
 
-func (e *Event) EmitClientCountState(count int64) {
-	Driver.Emit(ClientOCountState, count)
+func (c *Client) EmitClientCountState(count int64) {
+	eventDriver.Emit(ClientOCountState, count)
 }
 
-func (e *Event) EmitClientDeleteSuccess(uid string) {
-	Driver.Emit(ClientDeleteSuccess, uid)
+func (c *Client) EmitClientDeleteSuccess(uid string) {
+	eventDriver.Emit(ClientDeleteSuccess, uid)
 
 }
 
-func (e *Event) CreateListenClientOnline(handler func(i ...interface{})) {
-	Driver.AddListener(ClientCreateSuccess, handler)
+func (c *Client) CreateListenClientOnline(handler func(i ...interface{})) {
+	eventDriver.AddListener(ClientCreateSuccess, handler)
 }
 
-func (e *Event) CreateListenClientOffline(handler func(i ...interface{})) {
-	Driver.AddListener(ClientDeleteSuccess, handler)
+func (c *Client) CreateListenClientOffline(handler func(i ...interface{})) {
+	eventDriver.AddListener(ClientDeleteSuccess, handler)
 }
 
-func createClientMetricListen() {
-
-	GlobalEvent.CreateListenClientOnline(func(i ...interface{}) {
+func (c *Client) addDefaultListener() {
+	c.CreateListenClientOnline(func(i ...interface{}) {
 		if len(i) < 1 {
 			return
 		}
@@ -53,7 +65,7 @@ func createClientMetricListen() {
 		}
 	})
 
-	GlobalEvent.CreateListenClientOffline(func(i ...interface{}) {
+	c.CreateListenClientOffline(func(i ...interface{}) {
 		if len(i) < 1 {
 			return
 		}
@@ -61,5 +73,4 @@ func createClientMetricListen() {
 			metric.ClientOnline.Inc()
 		}
 	})
-
 }

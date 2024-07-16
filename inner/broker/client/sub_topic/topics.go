@@ -158,7 +158,7 @@ func CreateTopic(client client.PacketWriter, meta *topic.Meta) (topic.Topic, err
 	if !meta.Share {
 		switch qos {
 		case broker.QoS0:
-			return NewQoS0(meta, client, message_source.NewStreamSource(topicName, event.GlobalEvent)), nil
+			return NewQoS0(meta, client, message_source.NewStreamSource(topicName, event.MessageEvent)), nil
 		case broker.QoS1:
 			return NewQoS1(meta, client, message_source.NewStoreSource(topicName, store.DefaultMessageStore, store.DefaultMessageStoreEvent), nil), nil
 		case broker.QoS2:
@@ -194,7 +194,7 @@ func CreateTopicFromSession(client client.PacketWriter, meta *topic.Meta, unfini
 
 	switch byte(meta.QoS) {
 	case broker.QoS0:
-		return NewQoS0(meta, client, message_source.NewStreamSource(topicName, event.GlobalEvent))
+		return NewQoS0(meta, client, message_source.NewStreamSource(topicName, event.MessageEvent))
 
 	case broker.QoS1:
 		unfinished = FillUnfinishedMessage(ctx, unfinished, message_source.NewStoreSource(topicName, store.DefaultMessageStore, store.DefaultMessageStoreEvent))

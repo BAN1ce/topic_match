@@ -2,6 +2,7 @@ package message_source
 
 import (
 	"context"
+	"fmt"
 	"github.com/BAN1ce/skyTree/inner/event"
 	"github.com/BAN1ce/skyTree/logger"
 	"github.com/BAN1ce/skyTree/pkg/broker"
@@ -41,35 +42,37 @@ func (s *StoreSource) NextMessages(ctx context.Context, n int, startMessageID st
 	}
 
 	var (
-		f            func(...interface{})
 		ctx1, cancel = context.WithCancel(ctx)
+		ok           bool
+		eventData    *event.StoreEventData
+		f            = func(i ...interface{}) {
+			if len(i) != 1 {
+				logger.Logger.Error("readStoreWriteToWriter error", zap.Any("i", i))
+				return
+			}
+			eventData, ok = i[0].(*event.StoreEventData)
+			cancel()
+			return
+		}
 	)
+	defer cancel()
 
 	logger.Logger.Debug("store source next message start listen store event", zap.String("topic", s.topic), zap.String("startMessageID", startMessageID))
-
-	f = func(i ...interface{}) {
-
-		if len(i) != 1 {
-			logger.Logger.Error("readStoreWriteToWriter error", zap.Any("i", i))
-			return
-		}
-		data, ok := i[0].(*event.StoreEventData)
-		if !ok {
-			logger.Logger.Error("readStoreWriteToWriter parameter type is not storeEventData", zap.Any("i", i))
-			return
-		}
-
-		if startMessageID == "" {
-			msg, err = s.readStoreWriteToWriter(ctx, s.topic, data.MessageID, n, true)
-		} else {
-			msg, err = s.readStoreWriteToWriter(ctx, s.topic, startMessageID, n, false)
-		}
-		cancel()
-	}
 	s.storeEvent.CreateListenMessageStoreEvent(s.topic, f)
 	<-ctx1.Done()
 	logger.Logger.Debug("store source next message got from store event", zap.Any("message", msg), zap.Error(err))
 	s.storeEvent.DeleteListenMessageStoreEvent(s.topic, f)
+
+	if !ok || eventData == nil {
+		return nil, fmt.Errorf("store source next message got from store event error, eventData is nil or type error")
+	}
+
+	if startMessageID == "" {
+		msg, err = s.readStoreWriteToWriter(ctx, s.topic, eventData.MessageID, n, true)
+	} else {
+		msg, err = s.readStoreWriteToWriter(ctx, s.topic, startMessageID, n, false)
+	}
+
 	return msg, err
 }
 

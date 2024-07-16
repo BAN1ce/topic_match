@@ -22,6 +22,7 @@ type Message struct {
 	Will          bool
 	State         int
 	ShareTopic    string
+	FromTopic     string
 }
 
 func (m *Message) SetSubIdentifier(id byte) {

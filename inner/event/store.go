@@ -3,18 +3,9 @@ package event
 import (
 	"github.com/BAN1ce/skyTree/inner/metric"
 	"github.com/BAN1ce/skyTree/logger"
-	"github.com/kataras/go-events"
+	"github.com/BAN1ce/skyTree/pkg/utils"
 	"go.uber.org/zap"
-	"time"
 )
-
-type StoreEventData struct {
-	Topic     string
-	MessageID string
-	Success   bool
-	Duration  time.Duration
-	Count     int
-}
 
 const (
 	MessageStored = "event.store.stored"
@@ -33,34 +24,33 @@ type Store struct {
 
 func newStoreEvent() *Store {
 	s := &Store{}
-	s.registerMetric()
 	return s
 }
 
 func (s *Store) EmitStored(data *StoreEventData) {
-	Driver.Emit(TopicMessageStoredEventName(data.Topic), data)
-	Driver.Emit(MessageStored, data)
+	eventDriver.Emit(topicMessageStoredEventName(data.Topic), data)
+	eventDriver.Emit(MessageStored, data)
 
 }
 
 func (s *Store) EmitRead(data *StoreEventData) {
-	Driver.Emit(MessageRead, data)
+	eventDriver.Emit(MessageRead, data)
 }
 
 func (s *Store) EmitDelete(data *StoreEventData) {
-	Driver.Emit(MessageDelete, data)
+	eventDriver.Emit(MessageDelete, data)
 }
 
 func (s *Store) CreateListenMessageStoreEvent(topic string, handler func(...interface{})) {
-	Driver.AddListener(TopicMessageStoredEventName(topic), handler)
+	eventDriver.AddListener(topicMessageStoredEventName(topic), handler)
 }
 
 func (s *Store) DeleteListenMessageStoreEvent(topic string, handler func(i ...interface{})) {
-	Driver.RemoveListener(TopicMessageStoredEventName(topic), handler)
+	eventDriver.RemoveListener(topicMessageStoredEventName(topic), handler)
 }
 
-func (s *Store) registerMetric() {
-	Driver.AddListener(MessageRead, func(i ...interface{}) {
+func (s *Store) addDefaultListener() {
+	eventDriver.AddListener(MessageRead, func(i ...interface{}) {
 		if len(i) != 1 {
 			logger.Logger.Error("readStoreWriteToWriter error", zap.Any("i", i))
 			return
@@ -71,16 +61,17 @@ func (s *Store) registerMetric() {
 		}
 
 		metric.StoreReadDuration.Observe(data.Duration.Seconds())
+		metric.StoreReadRequestCount.Inc()
 
 		if ok {
 			metric.StoreReadMessageCount.Add(float64(data.Count))
 		} else {
-			metric.StoreReadRequestFailed.Inc()
+			metric.StoreReadRequestFailedCount.Inc()
 		}
 
 	})
 
-	Driver.AddListener(MessageStored, func(i ...interface{}) {
+	eventDriver.AddListener(MessageStored, func(i ...interface{}) {
 
 		if len(i) != 1 {
 			logger.Logger.Error("readStoreWriteToWriter error", zap.Any("i", i))
@@ -91,14 +82,15 @@ func (s *Store) registerMetric() {
 			return
 		}
 
-		if !data.Success {
-			metric.StoreStoreRequestFailed.Inc()
-		}
-		metric.StoreStoreDuration.Observe(data.Duration.Seconds())
+		metric.StoreWriteDuration.Observe(data.Duration.Seconds())
+		metric.StoreWriteRequestCount.Inc()
 
+		if !data.Success {
+			metric.StoreWriteRequestFailedCount.Inc()
+		}
 	})
 
-	Driver.AddListener(MessageDelete, func(i ...interface{}) {
+	eventDriver.AddListener(MessageDelete, func(i ...interface{}) {
 		if len(i) != 1 {
 			logger.Logger.Error("readStoreWriteToWriter error", zap.Any("i", i))
 			return
@@ -108,13 +100,14 @@ func (s *Store) registerMetric() {
 			return
 		}
 		if !data.Success {
-			metric.StoreDeleteRequestFailed.Inc()
+			metric.StoreDeleteRequestFailedCount.Inc()
 		}
 		metric.StoreDeleteDuration.Observe(data.Duration.Seconds())
+		metric.StoreDeleteRequestCount.Inc()
 	})
 
 }
 
-func TopicMessageStoredEventName(topic string) events.EventName {
-	return WithEventPrefix(MessageStored, topic)
+func topicMessageStoredEventName(topic string) string {
+	return utils.WithEventPrefix(MessageStored, topic)
 }

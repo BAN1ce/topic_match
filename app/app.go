@@ -15,8 +15,8 @@ import (
 	"github.com/BAN1ce/skyTree/inner/broker/store/message"
 	"github.com/BAN1ce/skyTree/inner/broker/subscription"
 	"github.com/BAN1ce/skyTree/inner/event"
+	"github.com/BAN1ce/skyTree/inner/event/driver"
 	"github.com/BAN1ce/skyTree/inner/facade"
-	"github.com/BAN1ce/skyTree/inner/metric"
 	"github.com/BAN1ce/skyTree/inner/version"
 	broker2 "github.com/BAN1ce/skyTree/pkg/broker"
 	"github.com/BAN1ce/skyTree/pkg/broker/plugin"
@@ -40,7 +40,6 @@ type App struct {
 
 func NewApp() *App {
 	// todo: get config
-	metric.Boot()
 	//var (
 	//	subTree = app2.NewApp()
 	//)
@@ -53,6 +52,8 @@ func NewApp() *App {
 	//}...); err != nil {
 	//	log.Fatal("start store cluster failed", err)
 	//}
+	event.SetEventDriverOnce(driver.NewLocal())
+
 	var (
 		clientManager = client.NewClients()
 
@@ -70,14 +71,13 @@ func NewApp() *App {
 
 		subscriptionCore = broker2.NewLocalSubCenter()
 	)
-	event.Boot()
-	store.Boot(localNutsDBStore, event.StoreEvent)
 	var (
 		storeWrapper = message.NewStoreWrapper(localNutsDBStore, event.StoreEvent)
 	)
+	store.Boot(storeWrapper, event.StoreEvent)
 
 	// TODO: fix this
-	//event.GlobalEvent.CreateListenClientOffline(shareTopicManger.CloseClient)
+	//event.Message.CreateListenClientOffline(shareTopicManger.CloseClient)
 
 	var (
 		publishRetrySchedule = facade.SinglePublishRetry()
