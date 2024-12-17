@@ -34,6 +34,11 @@ var (
 	ErrTopicQoSNotSupport        = errors.New("topic qos not support")
 )
 
+// Message
+
+var (
+	ErrPacketIDNotFound = errors.New("packet id not found")
+)
 var (
 	ErrStoreMessageLength  = errors.New("store message length error")
 	ErrStoreMessageExpired = errors.New("store message expired")
@@ -50,4 +55,8 @@ var (
 
 var (
 	ErrClientRemoved = errors.New("client removed")
+)
+
+var (
+	ErrEventTriggerCancel = errors.New("event trigger cancel")
 )

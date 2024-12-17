@@ -13,8 +13,8 @@ type Client struct {
 }
 
 type Meta struct {
-	ID        string       `json:"id"`
-	AliveTime time.Time    `json:"alive_time"`
-	KeepAlive string       `json:"keep_alive"`
-	Topic     []topic.Meta `json:"topic"`
+	ID        string        `json:"id"`
+	AliveTime time.Time     `json:"alive_time"`
+	KeepAlive string        `json:"keep_alive"`
+	Topic     []*topic.Meta `json:"topic"`
 }

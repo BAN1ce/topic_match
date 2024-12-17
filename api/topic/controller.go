@@ -1,6 +1,7 @@
 package topic
 
 import (
+	"encoding/base64"
 	"github.com/BAN1ce/skyTree/api/base"
 	"github.com/BAN1ce/skyTree/pkg/model"
 	"github.com/gin-gonic/gin"
@@ -28,7 +29,8 @@ func (c *Controller) Info(g *gin.Context) {
 		g.Error(err)
 		return
 	}
-	topic, err := c.topics.ReadTopic(req.Topic)
+	topicName, err := base64.URLEncoding.DecodeString(req.Topic)
+	topic, err := c.topics.ReadTopic(string(topicName))
 	if err != nil {
 		g.Error(err)
 		return

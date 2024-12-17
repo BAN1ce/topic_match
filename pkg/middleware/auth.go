@@ -30,7 +30,7 @@ func (a *Auth) Handle(client *client.Client, packet *packets.ControlPacket) erro
 		return err
 	}
 	rsp.ReasonCode = 0x00
-	client.WritePacket(&client2.WritePacket{
+	client.Write(&client2.WritePacket{
 		Packet: rsp,
 	})
 	return nil

@@ -5,7 +5,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-// Store Read
+// MessageStore Read
 
 var (
 	StoreReadMessageCount = promauto.NewCounter(prometheus.CounterOpts{
@@ -32,7 +32,7 @@ var (
 	})
 )
 
-// Store Save
+// MessageStore Save
 
 var (
 	StoreWriteRequestFailedCount = promauto.NewCounter(prometheus.CounterOpts{
@@ -54,7 +54,7 @@ var (
 	})
 )
 
-// Store Delete metric
+// MessageStore Delete metric
 
 var (
 	StoreDeleteRequestFailedCount = promauto.NewCounter(prometheus.CounterOpts{

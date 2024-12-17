@@ -20,7 +20,7 @@ func TestFillUnfinishedMessage(t *testing.T) {
 		}
 	)
 	defer mockCtrl.Finish()
-	mockMessageSource.EXPECT().NextMessages(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]*packet.Message{
+	mockMessageSource.EXPECT().NextMessages(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return([]*packet.Message{
 		{
 			MessageID:     "1",
 			PublishPacket: publishTest,

@@ -3,19 +3,29 @@ package message
 import (
 	"bytes"
 	"context"
+	"errors"
+	"github.com/BAN1ce/skyTree/config"
 	"github.com/BAN1ce/skyTree/inner/broker/store"
 	event2 "github.com/BAN1ce/skyTree/inner/event"
 	"github.com/BAN1ce/skyTree/logger"
 	"github.com/BAN1ce/skyTree/pkg/broker"
 	packet2 "github.com/BAN1ce/skyTree/pkg/packet"
-	"go.uber.org/zap"
 	"time"
 )
 
-// Wrapper is a wrapper of pkg.MessageStore
+// Wrapper is a wrapper for the store
+// it helps to store the message after encode to bytes to the store
+// and set the expired time for the message
+// it will emit the store event
+// and handle the store error
 type Wrapper struct {
 	store broker.TopicMessageStore
 	event broker.MessageStoreEvent
+}
+
+func (w *Wrapper) DeleteBeforeTime(ctx context.Context, topic string, time time.Time, limit int) error {
+	err := w.store.DeleteBeforeTime(ctx, topic, time, limit)
+	return err
 }
 
 func NewStoreWrapper(store broker.TopicMessageStore, event broker.MessageStoreEvent) *Wrapper {
@@ -26,121 +36,64 @@ func NewStoreWrapper(store broker.TopicMessageStore, event broker.MessageStoreEv
 }
 
 // StorePublishPacket stores the published packet to store
-// if topics is empty, return error
 // topics include the origin topic and the topic of the wildcard subscription
-// and emit store event
+// if qos is 0, the message will not store
 func (w *Wrapper) StorePublishPacket(topics map[string]int32, packet *packet2.Message) (messageID string, err error) {
+	if len(topics) == 0 {
+		logger.Logger.Warn().Msg("store publish packet with empty topics, should not be empty")
+		return "", nil
+	}
+
 	var (
 		// there doesn't use bytes.BufferPool, because the store maybe async
 		encodedData = bytes.NewBuffer(nil)
+		expiredTime int64
+		errs        error
 	)
-	if len(topics) == 0 {
-		logger.Logger.Info("store publish packet with empty topics")
-		return "", nil
+
+	// if the message has the message expiry property, set the expired time
+	// if not set the default expired time
+	if packet.PublishPacket.Properties != nil && packet.PublishPacket.Properties.MessageExpiry != nil {
+		expiredTime = time.Now().Add(time.Duration(int64(*packet.PublishPacket.Properties.MessageExpiry)) * time.Second).Unix()
+	} else {
+		// default expired time
+		expiredTime = time.Now().Add(time.Duration(config.GetConfig().Store.MessageExpired) * time.Second).Unix()
 	}
+
+	// set the expired time for the message
+	packet.ExpiredTime = expiredTime
+
 	// publish packet encode to bytes
-	if err := broker.Encode(store.DefaultSerializerVersion, packet, encodedData); err != nil {
+	if err = broker.Encode(store.DefaultSerializerVersion, packet, encodedData); err != nil {
 		return "", err
 	}
 
-	for topic := range topics {
+	for topic, qos := range topics {
+		if qos == 0 {
+			// qos 0 message will not store
+			continue
+		}
+
 		// store message bytes
 		messageID, err = w.CreatePacket(topic, encodedData.Bytes())
 
 		if err != nil {
-			logger.Logger.Error("create packet to store error = ", zap.Error(err), zap.String("topic", topic))
+			errs = errors.Join(errs, err)
+			logger.Logger.Error().Err(err).Str("topic", topic).Msg("create packet to store error")
 		} else {
-			logger.Logger.Debug("create packet to store success", zap.String("topic", topic), zap.String("messageID", messageID))
-			// emit store event
+			logger.Logger.Debug().Str("topic", topic).Str("message_id", messageID).Str("payload", string(packet.PublishPacket.Payload)).Msg("create packet to store success")
 		}
+
 	}
+	err = errs
+
 	return messageID, err
-}
-
-// ReadPublishMessage reads the published message with the given topic and messageID from store
-// if startMessageID is empty, read from the latest message
-// if include is true, read from the startMessageID, otherwise read from the next message of startMessageID
-// if include is true and startMessageID was the latest message, waiting for the next message by listening store event
-// read message from store and write to writer
-func (w *Wrapper) ReadPublishMessage(ctx context.Context, topic, startMessageID string, size int, include bool, writer func(message *packet2.Message)) (err error) {
-	// FIXME: If consecutive errors, consider downgrading options
-	if startMessageID != "" {
-		if err = w.readStoreWriteToWriter(ctx, topic, startMessageID, size, include, writer); err != nil {
-			return
-		}
-	}
-	var (
-		f            func(...interface{})
-		ctx1, cancel = context.WithCancel(ctx)
-	)
-	f = func(i ...interface{}) {
-		if len(i) != 2 {
-			logger.Logger.Error("readStoreWriteToWriter error", zap.Any("i", i))
-			return
-		}
-		id, _ := i[1].(string)
-		if startMessageID == "" {
-			startMessageID = id
-		}
-		if err = w.readStoreWriteToWriter(ctx1, topic, startMessageID, size, true, writer); err != nil {
-			logger.Logger.Error("readStoreWriteToWriter error", zap.Error(err))
-		}
-		cancel()
-	}
-	if ctx1.Err() != nil {
-		return
-	}
-	w.event.CreateListenMessageStoreEvent(topic, f)
-	<-ctx1.Done()
-	w.event.DeleteListenMessageStoreEvent(topic, f)
-	return
-}
-
-// readStoreWriteToWriter read message from store and write to writer
-func (w *Wrapper) readStoreWriteToWriter(ctx context.Context, topic string, id string, size int, include bool, writer func(message *packet2.Message)) error {
-	var (
-		message, err = w.ReadTopicMessagesByID(ctx, topic, id, size, include)
-	)
-	if err != nil {
-		return err
-	}
-	logger.Logger.Debug("store help read publish message and write to channel",
-		zap.String("store", topic),
-		zap.String("id", id),
-		zap.Int("size", size),
-		zap.Bool("include", include),
-		zap.Int("got message size", len(message)))
-	for _, m := range message {
-		if !m.Will {
-			writer(m)
-		}
-	}
-	return nil
-}
-
-func (w *Wrapper) ReadTopicWillMessage(ctx context.Context, topic, messageID string, writer func(message *packet2.Message)) error {
-	var (
-		// TODO: limit maybe not enough
-		message, err = w.store.ReadTopicMessagesByID(ctx, topic, messageID, 1, true)
-	)
-	if err != nil {
-		return err
-	}
-	logger.Logger.Debug("store help read publish message and write to channel",
-		zap.String("store", topic),
-		zap.Int("got message size", len(message)))
-	for _, m := range message {
-		if m.Will {
-			writer(m)
-		}
-	}
-	return nil
 }
 
 func (w *Wrapper) DeleteTopicMessageID(ctx context.Context, topic, messageID string) error {
 	start := time.Now()
 	err := w.store.DeleteTopicMessageID(ctx, topic, messageID)
-	event2.StoreEvent.EmitDelete(&event2.StoreEventData{
+	w.event.EmitDelete(&event2.StoreEventData{
 		Success:  err == nil,
 		Topic:    topic,
 		Duration: time.Since(start),
@@ -151,7 +104,7 @@ func (w *Wrapper) DeleteTopicMessageID(ctx context.Context, topic, messageID str
 func (w *Wrapper) ReadFromTimestamp(ctx context.Context, topic string, timestamp time.Time, limit int) ([]*packet2.Message, error) {
 	start := time.Now()
 	result, err := w.store.ReadFromTimestamp(ctx, topic, timestamp, limit)
-	event2.StoreEvent.EmitRead(&event2.StoreEventData{
+	w.event.EmitRead(&event2.StoreEventData{
 		Topic:    topic,
 		Success:  err == nil,
 		Duration: time.Since(start),
@@ -160,26 +113,57 @@ func (w *Wrapper) ReadFromTimestamp(ctx context.Context, topic string, timestamp
 	return result, err
 }
 
+// ReadTopicMessagesByID read the messages belong the topic and the message id from the message store
+// if the message is expired, delete the message, and return the messages after filter
 func (w *Wrapper) ReadTopicMessagesByID(ctx context.Context, topic, id string, limit int, include bool) ([]*packet2.Message, error) {
-	start := time.Now()
+	var (
+		start          = time.Now()
+		filteredResult []*packet2.Message
+	)
 	result, err := w.store.ReadTopicMessagesByID(ctx, topic, id, limit, include)
-	event2.StoreEvent.EmitRead(&event2.StoreEventData{
+	w.event.EmitRead(&event2.StoreEventData{
 		Topic:    topic,
 		Success:  err == nil,
 		Duration: time.Since(start),
 		Count:    len(result),
 	})
-	return result, err
+
+	for _, m := range result {
+		if m.IsExpired() {
+			if err1 := w.store.DeleteTopicMessageID(ctx, topic, m.MessageID); err1 != nil {
+				logger.Logger.Error().Err(err1).Str("topic", topic).Str("message_id", m.MessageID).Msg("delete expired message error")
+			}
+		} else {
+			filteredResult = append(filteredResult, m)
+		}
+	}
+
+	return filteredResult, err
 }
 
 func (w *Wrapper) CreatePacket(topic string, value []byte) (id string, err error) {
 	start := time.Now()
 	id, err = w.store.CreatePacket(topic, value)
-	event2.StoreEvent.EmitStored(&event2.StoreEventData{
+	w.event.EmitStored(&event2.StoreEventData{
 		Topic:     topic,
 		MessageID: id,
 		Success:   err == nil,
 		Duration:  time.Since(start),
 	})
 	return
+}
+
+// Topics return the topics from the message store
+func (w *Wrapper) Topics(start, limit int) []string {
+	return w.store.Topics(start, limit)
+}
+
+// TopicMessageTotal return the total message count of the topic in the message store
+func (w *Wrapper) TopicMessageTotal(ctx context.Context, topic string) (int, error) {
+	return w.store.TopicMessageTotal(ctx, topic)
+}
+
+// ReadTopicMessage read the messages belong the topic from the message store
+func (w *Wrapper) ReadTopicMessage(ctx context.Context, topic string, start, limit int) ([]*packet2.Message, error) {
+	return w.store.ReadTopicMessage(ctx, topic, start, limit)
 }

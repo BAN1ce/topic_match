@@ -29,13 +29,19 @@ func NewWritePacket(p packets.Packet) *WritePacket {
 }
 
 type PacketWriter interface {
-	// WritePacket writes the packet to the writer.
+	// Writer writes the packet to the writer.
 	// Warning: packetID is original packetID, method should change it to the new one that does not used.
-	WritePacket(packet *WritePacket) (err error)
+	Writer
+
 	PacketIDGenerator
 
 	ID
 	Close() error
+}
+
+type Writer interface {
+	Write(packet *WritePacket) (err error)
+	RetryWrite(packet *WritePacket) (err error)
 }
 
 type Client interface {
@@ -48,11 +54,11 @@ type Client interface {
 }
 
 type HandlePublishResponse interface {
-	HandlePublishAck(pubAck *packets.Puback) (ok bool, err error)
-	HandlePublishRec(pubRec *packets.Pubrec) (ok bool, err error)
+	HandlePublishAck(pubAck *packets.Puback) (err error)
+	HandlePublishRec(pubRec *packets.Pubrec) (err error)
 
 	// HandelPublishComp HandlePublishComp handles the PUBCOMP packet from the client.
 	// ok is true if the packet exists.
 	// err is the error that occurred.
-	HandelPublishComp(pubComp *packets.Pubcomp) (ok bool, err error)
+	HandelPublishComp(pubComp *packets.Pubcomp) (err error)
 }

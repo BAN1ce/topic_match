@@ -1,12 +1,10 @@
 package share
 
 import (
-	"context"
 	"github.com/BAN1ce/skyTree/inner/broker/message_source"
 	"github.com/BAN1ce/skyTree/logger"
 	"github.com/BAN1ce/skyTree/pkg/broker"
 	topic2 "github.com/BAN1ce/skyTree/pkg/broker/topic"
-	"go.uber.org/zap"
 	"sync"
 )
 
@@ -20,19 +18,17 @@ type GroupMessageSource = map[GroupName]*MessageSource
 // Every share group for one topic has a message source, in a share group client use the same message source,
 // So we need a factory to create the message source.
 type TopicMessageSourceFactory struct {
-	ctx              context.Context
-	mux              sync.RWMutex
-	ShareTopicSource map[TopicName]GroupMessageSource
-	store            broker.TopicMessageStore
-	storeEvent       broker.MessageStoreEvent
+	mux                    sync.RWMutex
+	ShareTopicSource       map[TopicName]GroupMessageSource
+	store                  broker.TopicMessageStore
+	handlePublishDoneEvent broker.HandlePublishDoneEvent
 }
 
-func NewTopicMessageSourceFactory(ctx context.Context, store broker.TopicMessageStore, storeEvent broker.MessageStoreEvent) *TopicMessageSourceFactory {
+func NewTopicMessageSourceFactory(store broker.TopicMessageStore, storeEvent broker.HandlePublishDoneEvent) *TopicMessageSourceFactory {
 	return &TopicMessageSourceFactory{
-		ctx:              ctx,
-		ShareTopicSource: make(map[TopicName]GroupMessageSource),
-		store:            store,
-		storeEvent:       storeEvent,
+		ShareTopicSource:       make(map[TopicName]GroupMessageSource),
+		store:                  store,
+		handlePublishDoneEvent: storeEvent,
 	}
 }
 
@@ -52,7 +48,7 @@ func (m *TopicMessageSourceFactory) GetShareGroupMessageSource(shareTopic topic2
 		m.ShareTopicSource[topic] = make(GroupMessageSource)
 	}
 	if _, ok := m.ShareTopicSource[topic][group]; !ok {
-		topicMessageSource := message_source.NewStoreSource(shareTopic.Topic, m.store, m.storeEvent)
+		topicMessageSource := message_source.NewStoreSource(shareTopic.Topic, m.store, m.handlePublishDoneEvent)
 		m.ShareTopicSource[topic][group] = newMessageSource(fullShareTopic, topic, topicMessageSource)
 	}
 	return m.ShareTopicSource[topic][group]
@@ -76,7 +72,7 @@ func (m *TopicMessageSourceFactory) DeleteShareGroupMessageSource(shareTopic top
 		return
 	}
 	if err := m.ShareTopicSource[topic][group].Close(); err != nil {
-		logger.Logger.Error("close share group message source error", zap.Error(err))
+		logger.Logger.Error().Err(err).Str("topic", topic).Str("group", group).Msg("close share group message source error")
 	}
 	delete(m.ShareTopicSource[topic], group)
 

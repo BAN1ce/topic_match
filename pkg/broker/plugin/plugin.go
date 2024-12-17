@@ -3,7 +3,6 @@ package plugin
 import (
 	"github.com/BAN1ce/skyTree/logger"
 	"github.com/eclipse/paho.golang/packets"
-	"go.uber.org/zap"
 )
 
 const (
@@ -68,7 +67,7 @@ func (p *Plugins) DoReceivedConnect(clientID string, connect *packets.Connect) {
 	}
 	for _, f := range p.OnReceivedConnect {
 		if err := f(clientID, connect); err != nil {
-			logger.Logger.Error("plugin OnReceivedConnect error", zap.Error(err), zap.String("client", clientID))
+			logger.Logger.Error().Str("client", clientID).Err(err).Msg("plugin OnReceivedConnect error")
 		}
 	}
 }
@@ -79,7 +78,7 @@ func (p *Plugins) DoSendConnAck(clientID string, connAck *packets.Connack) {
 	}
 	for _, f := range p.OnSendConnAck {
 		if err := f(clientID, connAck); err != nil {
-			logger.Logger.Error("plugin OnSendConnAck error", zap.Error(err), zap.String("client", clientID))
+			logger.Logger.Error().Str("client", clientID).Err(err).Msg("plugin OnSendConnAck error")
 		}
 	}
 }
@@ -90,7 +89,7 @@ func (p *Plugins) DoReceivedAuth(clientID string, auth *packets.Auth) {
 	}
 	for _, f := range p.OnReceivedAuth {
 		if err := f(clientID, auth); err != nil {
-			logger.Logger.Error("plugin OnReceivedAuth error", zap.Error(err), zap.String("client", clientID))
+			logger.Logger.Error().Str("client", clientID).Err(err).Msg("plugin OnReceivedAuth error")
 		}
 	}
 }
@@ -101,7 +100,7 @@ func (p *Plugins) DoReceivedDisconnect(clientID string, disconnect *packets.Disc
 	}
 	for _, f := range p.OnReceivedDisconnect {
 		if err := f(clientID, disconnect); err != nil {
-			logger.Logger.Error("plugin OnReceivedDisconnect error", zap.Error(err), zap.String("client", clientID))
+			logger.Logger.Error().Str("client", clientID).Err(err).Msg("plugin OnReceivedDisconnect error")
 		}
 	}
 }
@@ -112,7 +111,7 @@ func (p *Plugins) DoReceivedSubscribe(clientID string, subscribe *packets.Subscr
 	}
 	for _, f := range p.OnSubscribe {
 		if err := f(clientID, subscribe); err != nil {
-			logger.Logger.Error("plugin OnSubscribe error", zap.Error(err), zap.String("client", clientID))
+			logger.Logger.Error().Str("client", clientID).Err(err).Msg("plugin OnSubscribe error")
 		}
 	}
 }
@@ -123,7 +122,7 @@ func (p *Plugins) DoSendSubAck(clientID string, subAck *packets.Suback) {
 	}
 	for _, f := range p.OnSendSubAck {
 		if err := f(clientID, subAck); err != nil {
-			logger.Logger.Error("plugin OnSendSubAck error", zap.Error(err), zap.String("client", clientID))
+			logger.Logger.Error().Str("client", clientID).Err(err).Msg("plugin OnSendSubAck error")
 		}
 	}
 }
@@ -134,7 +133,7 @@ func (p *Plugins) DoReceivedUnsubscribe(clientID string, unsubscribe *packets.Un
 	}
 	for _, f := range p.OnUnsubscribe {
 		if err := f(clientID, unsubscribe); err != nil {
-			logger.Logger.Error("plugin OnUnsubscribe error", zap.Error(err), zap.String("client", clientID))
+			logger.Logger.Error().Str("client", clientID).Err(err).Msg("plugin OnUnsubscribe error")
 		}
 	}
 }
@@ -145,7 +144,7 @@ func (p *Plugins) DoSendUnsubAck(clientID string, unsubAck *packets.Unsuback) {
 	}
 	for _, f := range p.OnSendUnsubAck {
 		if err := f(clientID, unsubAck); err != nil {
-			logger.Logger.Error("plugin OnSendUnsubAck error", zap.Error(err), zap.String("client", clientID))
+			logger.Logger.Error().Str("client", clientID).Err(err).Msg("plugin OnSendUnsubAck error")
 		}
 	}
 }
@@ -156,7 +155,7 @@ func (p *Plugins) DoReceivedPublish(clientID string, publish packets.Publish) {
 	}
 	for _, f := range p.OnReceivedPublish {
 		if err := f(clientID, publish); err != nil {
-			logger.Logger.Error("plugin OnReceivedPublish error", zap.Error(err), zap.String("client", clientID))
+			logger.Logger.Error().Str("client", clientID).Err(err).Msg("plugin OnReceivedPublish error")
 		}
 	}
 }
@@ -167,7 +166,7 @@ func (p *Plugins) DoReceivedPubAck(clientID string, pubAck packets.Puback) {
 	}
 	for _, f := range p.OnReceivedPubAck {
 		if err := f(clientID, pubAck); err != nil {
-			logger.Logger.Error("plugin OnReceivedPubAck error", zap.Error(err), zap.String("client", clientID))
+			logger.Logger.Error().Str("client", clientID).Err(err).Msg("plugin OnReceivedPubAck error")
 		}
 	}
 }
@@ -178,7 +177,7 @@ func (p *Plugins) DoReceivedPubRel(clientID string, pubRel packets.Pubrel) {
 	}
 	for _, f := range p.OnReceivedPubRel {
 		if err := f(clientID, pubRel); err != nil {
-			logger.Logger.Error("plugin OnReceivedPubRel error", zap.Error(err), zap.String("client", clientID))
+			logger.Logger.Error().Str("client", clientID).Err(err).Msg("plugin OnReceivedPubRel error")
 		}
 	}
 }
@@ -189,7 +188,7 @@ func (p *Plugins) DoReceivedPubRec(clientID string, pubRec packets.Pubrec) {
 	}
 	for _, f := range p.OnReceivedPubRec {
 		if err := f(clientID, pubRec); err != nil {
-			logger.Logger.Error("plugin OnReceivedPubRec error", zap.Error(err), zap.String("client", clientID))
+			logger.Logger.Error().Str("client", clientID).Err(err).Msg("plugin OnReceivedPubRec error")
 		}
 	}
 }
@@ -200,7 +199,7 @@ func (p *Plugins) DoReceivedPubComp(clientID string, pubComp packets.Pubcomp) {
 	}
 	for _, f := range p.OnReceivedPubComp {
 		if err := f(clientID, pubComp); err != nil {
-			logger.Logger.Error("plugin OnReceivedPubComp error", zap.Error(err), zap.String("client", clientID))
+			logger.Logger.Error().Str("client", clientID).Err(err).Msg("plugin OnReceivedPubComp error")
 		}
 	}
 }
@@ -211,7 +210,7 @@ func (p *Plugins) DoSendPublish(clientID string, publish *packets.Publish) {
 	}
 	for _, f := range p.OnSendPublish {
 		if err := f(clientID, publish); err != nil {
-			logger.Logger.Error("plugin OnSendPublish error", zap.Error(err), zap.String("client", clientID))
+			logger.Logger.Error().Str("client", clientID).Err(err).Msg("plugin OnSendPublish error")
 		}
 	}
 }
@@ -222,7 +221,7 @@ func (p *Plugins) DoSendPubAck(clientID string, pubAck *packets.Puback) {
 	}
 	for _, f := range p.OnSendPubAck {
 		if err := f(clientID, pubAck); err != nil {
-			logger.Logger.Error("plugin OnSendPubAck error", zap.Error(err), zap.String("client", clientID))
+			logger.Logger.Error().Str("client", clientID).Err(err).Msg("plugin OnSendPubAck error")
 		}
 	}
 }
@@ -233,7 +232,7 @@ func (p *Plugins) DoSendPubRel(clientID string, pubRel *packets.Pubrel) {
 	}
 	for _, f := range p.OnSendPubRel {
 		if err := f(clientID, pubRel); err != nil {
-			logger.Logger.Error("plugin OnSendPubRel error", zap.Error(err), zap.String("client", clientID))
+			logger.Logger.Error().Str("client", clientID).Err(err).Msg("plugin OnSendPubRel error")
 		}
 	}
 }
@@ -244,7 +243,7 @@ func (p *Plugins) DoSendPubRec(clientID string, pubRec *packets.Pubrec) {
 	}
 	for _, f := range p.OnSendPubRec {
 		if err := f(clientID, pubRec); err != nil {
-			logger.Logger.Error("plugin OnSendPubRec error", zap.Error(err), zap.String("client", clientID))
+			logger.Logger.Error().Str("client", clientID).Err(err).Msg("plugin OnSendPubRec error")
 		}
 	}
 }
@@ -255,7 +254,7 @@ func (p *Plugins) DoSendPubComp(clientID string, pubComp *packets.Pubcomp) {
 	}
 	for _, f := range p.OnSendPubComp {
 		if err := f(clientID, pubComp); err != nil {
-			logger.Logger.Error("plugin OnSendPubComp error", zap.Error(err), zap.String("client", clientID))
+			logger.Logger.Error().Str("client", clientID).Err(err).Msg("plugin OnSendPubComp error")
 		}
 	}
 }
@@ -266,7 +265,7 @@ func (p *Plugins) DoReceivedPingReq(clientID string, pingReq *packets.Pingreq) {
 	}
 	for _, f := range p.OnReceivedPingReq {
 		if err := f(clientID, pingReq); err != nil {
-			logger.Logger.Error("plugin OnReceivedPingReq error", zap.Error(err), zap.String("client", clientID))
+			logger.Logger.Error().Str("client", clientID).Err(err).Msg("plugin OnReceivedPingReq error")
 		}
 	}
 }
@@ -277,7 +276,7 @@ func (p *Plugins) DoSendPingResp(clientID string, pingResp *packets.Pingresp) {
 	}
 	for _, f := range p.OnSendPingResp {
 		if err := f(clientID, pingResp); err != nil {
-			logger.Logger.Error("plugin OnSendPingResp error", zap.Error(err), zap.String("client", clientID))
+			logger.Logger.Error().Str("client", clientID).Err(err).Msg("plugin OnSendPingResp error")
 		}
 	}
 }

@@ -13,7 +13,7 @@ var (
 
 func SingleWillDelay(option ...retry.Option) RetrySchedule {
 	willDelayOnce.Do(func() {
-		var s = retry.NewSchedule(config.GetRootContext(), option...)
+		var s = retry.NewSchedule(config.GetRootContext(), nil, nil, option...)
 		s.Start()
 		willDelay = s
 	})

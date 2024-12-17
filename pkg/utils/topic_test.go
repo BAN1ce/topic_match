@@ -1,6 +1,9 @@
 package utils
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestParseShareTopic(t *testing.T) {
 	type args struct {
@@ -29,6 +32,72 @@ func TestParseShareTopic(t *testing.T) {
 			}
 			if gotSubTopic != tt.wantSubTopic {
 				t.Errorf("ParseShareTopic() gotSubTopic = %v, want %v", gotSubTopic, tt.wantSubTopic)
+			}
+		})
+	}
+}
+
+func TestSplitTopic(t *testing.T) {
+	type args struct {
+		topic string
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		//{
+		//	name: " /a/b",
+		//	args: args{
+		//		topic: "/a/b",
+		//	},
+		//	want: []string{
+		//		"/",
+		//		"a",
+		//		"b",
+		//	},
+		//},
+		//{
+		//	name: " a/b",
+		//	args: args{
+		//		topic: "a/b",
+		//	},
+		//	want: []string{
+		//		"a",
+		//		"b",
+		//	},
+		//},
+		//{
+		//	name: " a",
+		//	args: args{
+		//		topic: "a",
+		//	},
+		//	want: []string{
+		//		"a",
+		//	},
+		//},
+		//{
+		//	name: "/a",
+		//	args: args{
+		//		topic: "/a",
+		//	},
+		//	want: []string{
+		//		"/",
+		//		"a",
+		//	},
+		//},
+		{
+			name: "/",
+			args: args{
+				topic: "/",
+			},
+			want: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := SplitTopic(tt.args.topic); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SplitTopic() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -2,64 +2,46 @@ package config
 
 import (
 	"flag"
-	"time"
+	"github.com/gookit/config/v2"
+	"github.com/gookit/config/v2/yaml"
 )
 
 var (
-	nodeIDFlag = flag.Uint64("nodeID", 1, "node id")
-	httpPort   = flag.Int("httpPort", 9526, "http port")
-	brokerPort = flag.Int("brokerPort", 1883, "broker port")
-	cfg        *Config
+	configFilePath = flag.String("config", "./config/config.yaml", "config file")
+	nodeIDFlag     = flag.Uint64("nodeID", 1, "node id")
+	cfg            Config
 )
 
-func SetConfig(c *Config) {
-	cfg = c
-}
-
 func GetConfig() Config {
-	return *cfg
+	return cfg
 }
 
 type Config struct {
-	Retry
-	TimeWheel
-	Broker *Broker
+	Retry Retry `json:"retry"`
+	//TimeWheel TimeWheel `json:"time_wheel"`
+	Broker *Broker `json:"broker"`
+	Store  *Store  `json:"store"`
+	Log    *Log    `json:"log"`
+	Server Server  `json:"server"`
 }
 
-func NewConfig() *Config {
-	return &Config{
-		Retry:     GetRetry(),
-		TimeWheel: GetTimeWheel(),
-		Broker:    NewBroker(),
+func (c Config) GetLog() Log {
+	if c.Log == nil {
+		return Log{}
 	}
+	return *c.Log
+}
 
+func LoadConfig() error {
+	config.AddDriver(yaml.Driver)
+
+	err := config.LoadFiles(*configFilePath)
+	if err != nil {
+		return err
+	}
+	return config.BindStruct("", &cfg)
 }
 
 func GetPubMaxQos() uint8 {
 	return 1
-}
-
-type Retry struct {
-	MaxRetryCount int
-	MaxTime       time.Duration
-	Interval      time.Duration
-}
-
-func (r Retry) GetMaxRetryCount() int {
-	return r.MaxRetryCount
-}
-
-func (r Retry) GetMaxTime() time.Duration {
-	return r.MaxTime
-}
-
-func (r Retry) GetInterval() time.Duration {
-	return r.Interval
-}
-
-func GetRetry() Retry {
-	return Retry{
-		MaxRetryCount: 3,
-		Interval:      3 * time.Second,
-	}
 }

@@ -69,6 +69,24 @@ const (
 	PublishAckPayloadFormatInvalid        = 0x99
 )
 
+// SubackGrantedQoS0, etc are the list of valid suback reason codes.
+const (
+	SubackGrantedQoS0                         = 0x00
+	SubackGrantedQoS1                         = 0x01
+	SubackGrantedQoS2                         = 0x02
+	SubackUnspecifiederror                    = 0x80
+	SubackImplementationspecificerror         = 0x83
+	SubackNotauthorized                       = 0x87
+	SubackTopicFilterinvalid                  = 0x8F
+	SubackPacketIdentifierinuse               = 0x91
+	SubackQuotaexceeded                       = 0x97
+	SubackSharedSubscriptionnotsupported      = 0x9E
+	SubackSubscriptionIdentifiersnotsupported = 0xA1
+	SubackWildcardsubscriptionsnotsupported   = 0xA2
+
+	ErrSubackCreateSubscriptionFailed = 0x70
+)
+
 type StorePublishPacket interface {
 	Encode() ([]byte, error)
 	Decode([]byte) (packets.Publish, error)

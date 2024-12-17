@@ -14,9 +14,14 @@ func SplitTopic(topic string) []string {
 		return nil
 	}
 	var result = make([]string, 0, 30)
-	if strings.Index(topic, "/") == 0 {
+
+	if topic[0] == '/' {
 		result = append(result, "/")
+
 	}
+	//if !strings.Contains(topic, "/") {
+	//	result = append(result, "/")
+	//}
 
 	tmp := strings.Split(strings.Trim(topic, "/"), "/")
 
@@ -24,20 +29,14 @@ func SplitTopic(topic string) []string {
 		result = append(result, v)
 	}
 
-	return result
+	for _, v := range result {
+		if v != "/" {
+			return result
+		}
+	}
 
-	//for _, v := range tmp {
-	//	if v == "" {
-	//		result := make([]string, 0)
-	//		for _, v := range tmp {
-	//			if v != "" {
-	//				result = append(result, v)
-	//			}
-	//		}
-	//		return result
-	//	}
-	//}
-	//return tmp
+	return nil
+
 }
 
 // nolint

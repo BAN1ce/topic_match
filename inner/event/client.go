@@ -8,7 +8,8 @@ const (
 	ClientConnect = "event.client.connect.request"
 
 	ClientCreateSuccess = "event.client.create.success"
-	ClientCreateFailed  = "event.client.create.failed"
+
+	ClientCreateFailed = "event.client.create.failed"
 
 	ClientDeleteSuccess = "event.client.delete.success"
 
@@ -28,14 +29,8 @@ func newClientEvent() *Client {
 	return c
 }
 
-func (c *Client) EmitClientConnectResult(uid string, ok bool) {
-
-	eventDriver.Emit(ClientConnect)
-	if ok {
-		eventDriver.Emit(ClientCreateSuccess, uid)
-	} else {
-		eventDriver.Emit(ClientCreateFailed, uid)
-	}
+func (c *Client) EmitClientConnectResult(uid string, err error) {
+	eventDriver.Emit(ClientConnect, err)
 }
 
 func (c *Client) EmitClientCountState(count int64) {

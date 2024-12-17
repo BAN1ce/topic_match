@@ -1,0 +1,9 @@
+GET http://localhost:9526/api/v1/topics/L3JldGlhbg==
+Accept: application/json
+
+###
+GET http://localhost:9526/api/v1/messages?topic=/xPnN/Y44r/3cLx/UKhm/AsYM&start=0&limit=100
+
+
+
+

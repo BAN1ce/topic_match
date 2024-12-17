@@ -5,7 +5,6 @@ import (
 	"github.com/BAN1ce/skyTree/logger"
 	"github.com/BAN1ce/skyTree/pkg/broker"
 	"github.com/BAN1ce/skyTree/pkg/packet"
-	"go.uber.org/zap"
 	"sync"
 )
 
@@ -35,7 +34,7 @@ func newMessageSource(fullShareTopic, topic string, source broker.ReadMessageSou
 	}
 }
 
-func (m *MessageSource) NextMessages(ctx context.Context, n int, startMessageID string, include bool) ([]*packet.Message, error) {
+func (m *MessageSource) NextMessages(ctx context.Context, n int, startMessageID string, include bool, in chan *packet.Message) ([]*packet.Message, error) {
 	return m.nextMessage(ctx, n)
 }
 
@@ -76,7 +75,7 @@ func (m *MessageSource) Close() error {
 	if m.cancel != nil {
 		m.cancel()
 	}
-	logger.Logger.Info("share topic message source close", zap.String("topic", m.topic), zap.String("shareTopic", m.fullShareTopic))
+	logger.Logger.Info().Str("topic", m.topic).Str("shareTopic", m.fullShareTopic).Msg("share topic message source close")
 	return nil
 }
 
@@ -100,7 +99,7 @@ func (m *MessageSource) nextMessage(ctx context.Context, n int) (message []*pack
 		return
 	}
 
-	message, err = m.messageSource.NextMessages(ctx, 20, m.latestMessageID, false)
+	message, err = m.messageSource.NextMessages(ctx, 10, m.latestMessageID, false, nil)
 	if err != nil {
 		return nil, err
 	}

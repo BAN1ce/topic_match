@@ -81,18 +81,32 @@ func (mr *MockShareClientMockRecorder) NextPacketID() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextPacketID", reflect.TypeOf((*MockShareClient)(nil).NextPacketID))
 }
 
-// WritePacket mocks base method.
-func (m *MockShareClient) WritePacket(packet *client.WritePacket) error {
+// RetryWrite mocks base method.
+func (m *MockShareClient) RetryWrite(packet *client.WritePacket) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WritePacket", packet)
+	ret := m.ctrl.Call(m, "RetryWrite", packet)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// WritePacket indicates an expected call of WritePacket.
-func (mr *MockShareClientMockRecorder) WritePacket(packet interface{}) *gomock.Call {
+// RetryWrite indicates an expected call of RetryWrite.
+func (mr *MockShareClientMockRecorder) RetryWrite(packet interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WritePacket", reflect.TypeOf((*MockShareClient)(nil).WritePacket), packet)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryWrite", reflect.TypeOf((*MockShareClient)(nil).RetryWrite), packet)
+}
+
+// Write mocks base method.
+func (m *MockShareClient) Write(packet *client.WritePacket) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Write", packet)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Write indicates an expected call of Write.
+func (mr *MockShareClientMockRecorder) Write(packet interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Write", reflect.TypeOf((*MockShareClient)(nil).Write), packet)
 }
 
 // MockShareTopicManager is a mock of ShareTopicManager interface.
@@ -197,10 +211,10 @@ func (mr *MockShareTopicMockRecorder) GetUnFinishedMessage() *gomock.Call {
 }
 
 // Meta mocks base method.
-func (m *MockShareTopic) Meta() topic.Meta {
+func (m *MockShareTopic) Meta() *topic.Meta {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Meta")
-	ret0, _ := ret[0].(topic.Meta)
+	ret0, _ := ret[0].(*topic.Meta)
 	return ret0
 }
 
@@ -211,17 +225,17 @@ func (mr *MockShareTopicMockRecorder) Meta() *gomock.Call {
 }
 
 // Publish mocks base method.
-func (m *MockShareTopic) Publish(publish *packet.Message) error {
+func (m *MockShareTopic) Publish(publish *packet.Message, extra *packet.MessageExtraInfo) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Publish", publish)
+	ret := m.ctrl.Call(m, "Publish", publish, extra)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Publish indicates an expected call of Publish.
-func (mr *MockShareTopicMockRecorder) Publish(publish interface{}) *gomock.Call {
+func (mr *MockShareTopicMockRecorder) Publish(publish, extra interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockShareTopic)(nil).Publish), publish)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockShareTopic)(nil).Publish), publish, extra)
 }
 
 // ShareTopicAddClient mocks base method.
@@ -314,12 +328,11 @@ func (mr *MockShareTopicQoS1MockRecorder) GetUnFinishedMessage() *gomock.Call {
 }
 
 // HandlePublishAck mocks base method.
-func (m *MockShareTopicQoS1) HandlePublishAck(puback *packets.Puback) (bool, error) {
+func (m *MockShareTopicQoS1) HandlePublishAck(puback *packets.Puback) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HandlePublishAck", puback)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // HandlePublishAck indicates an expected call of HandlePublishAck.
@@ -329,10 +342,10 @@ func (mr *MockShareTopicQoS1MockRecorder) HandlePublishAck(puback interface{}) *
 }
 
 // Meta mocks base method.
-func (m *MockShareTopicQoS1) Meta() topic.Meta {
+func (m *MockShareTopicQoS1) Meta() *topic.Meta {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Meta")
-	ret0, _ := ret[0].(topic.Meta)
+	ret0, _ := ret[0].(*topic.Meta)
 	return ret0
 }
 
@@ -343,17 +356,17 @@ func (mr *MockShareTopicQoS1MockRecorder) Meta() *gomock.Call {
 }
 
 // Publish mocks base method.
-func (m *MockShareTopicQoS1) Publish(publish *packet.Message) error {
+func (m *MockShareTopicQoS1) Publish(publish *packet.Message, extra *packet.MessageExtraInfo) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Publish", publish)
+	ret := m.ctrl.Call(m, "Publish", publish, extra)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Publish indicates an expected call of Publish.
-func (mr *MockShareTopicQoS1MockRecorder) Publish(publish interface{}) *gomock.Call {
+func (mr *MockShareTopicQoS1MockRecorder) Publish(publish, extra interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockShareTopicQoS1)(nil).Publish), publish)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockShareTopicQoS1)(nil).Publish), publish, extra)
 }
 
 // ShareTopicAddClient mocks base method.
@@ -470,10 +483,10 @@ func (mr *MockShareTopicQoS2MockRecorder) HandlePublishRec(pubrec interface{}) *
 }
 
 // Meta mocks base method.
-func (m *MockShareTopicQoS2) Meta() topic.Meta {
+func (m *MockShareTopicQoS2) Meta() *topic.Meta {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Meta")
-	ret0, _ := ret[0].(topic.Meta)
+	ret0, _ := ret[0].(*topic.Meta)
 	return ret0
 }
 
@@ -484,17 +497,17 @@ func (mr *MockShareTopicQoS2MockRecorder) Meta() *gomock.Call {
 }
 
 // Publish mocks base method.
-func (m *MockShareTopicQoS2) Publish(publish *packet.Message) error {
+func (m *MockShareTopicQoS2) Publish(publish *packet.Message, extra *packet.MessageExtraInfo) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Publish", publish)
+	ret := m.ctrl.Call(m, "Publish", publish, extra)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Publish indicates an expected call of Publish.
-func (mr *MockShareTopicQoS2MockRecorder) Publish(publish interface{}) *gomock.Call {
+func (mr *MockShareTopicQoS2MockRecorder) Publish(publish, extra interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockShareTopicQoS2)(nil).Publish), publish)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockShareTopicQoS2)(nil).Publish), publish, extra)
 }
 
 // ShareTopicAddClient mocks base method.

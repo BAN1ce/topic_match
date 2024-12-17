@@ -34,6 +34,20 @@ func (m *MockKeyStore) EXPECT() *MockKeyStoreMockRecorder {
 	return m.recorder
 }
 
+// Close mocks base method.
+func (m *MockKeyStore) Close() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockKeyStoreMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockKeyStore)(nil).Close))
+}
+
 // DeleteKey mocks base method.
 func (m *MockKeyStore) DeleteKey(ctx context.Context, key string) error {
 	m.ctrl.T.Helper()
@@ -148,6 +162,21 @@ func (m *MockKeyStore) ZRange(ctx context.Context, key string, start, end float6
 func (mr *MockKeyStoreMockRecorder) ZRange(ctx, key, start, end interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ZRange", reflect.TypeOf((*MockKeyStore)(nil).ZRange), ctx, key, start, end)
+}
+
+// ZRangeByScore mocks base method.
+func (m *MockKeyStore) ZRangeByScore(ctx context.Context, key string, start, end float64) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ZRangeByScore", ctx, key, start, end)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ZRangeByScore indicates an expected call of ZRangeByScore.
+func (mr *MockKeyStoreMockRecorder) ZRangeByScore(ctx, key, start, end interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ZRangeByScore", reflect.TypeOf((*MockKeyStore)(nil).ZRangeByScore), ctx, key, start, end)
 }
 
 // MockHashStore is a mock of HashStore interface.
@@ -310,4 +339,19 @@ func (m *MockZSetStore) ZRange(ctx context.Context, key string, start, end float
 func (mr *MockZSetStoreMockRecorder) ZRange(ctx, key, start, end interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ZRange", reflect.TypeOf((*MockZSetStore)(nil).ZRange), ctx, key, start, end)
+}
+
+// ZRangeByScore mocks base method.
+func (m *MockZSetStore) ZRangeByScore(ctx context.Context, key string, start, end float64) ([]string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ZRangeByScore", ctx, key, start, end)
+	ret0, _ := ret[0].([]string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ZRangeByScore indicates an expected call of ZRangeByScore.
+func (mr *MockZSetStoreMockRecorder) ZRangeByScore(ctx, key, start, end interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ZRangeByScore", reflect.TypeOf((*MockZSetStore)(nil).ZRangeByScore), ctx, key, start, end)
 }

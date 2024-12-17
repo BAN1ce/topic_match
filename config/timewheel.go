@@ -3,8 +3,8 @@ package config
 import "time"
 
 type TimeWheel struct {
-	Interval time.Duration
-	SlotNum  int
+	Interval time.Duration `json:"interval"`
+	SlotNum  int           `json:"slot_num"`
 }
 
 func (t TimeWheel) GetInterval() time.Duration {

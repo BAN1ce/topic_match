@@ -1,6 +1,7 @@
 package retry
 
 import (
+	"github.com/BAN1ce/skyTree/pkg/packet"
 	"sync/atomic"
 	"time"
 )
@@ -17,5 +18,21 @@ func newDelayTask(key string, delay time.Duration, data interface{}) *DelayTask 
 		data:  data,
 		delay: delay,
 		key:   key,
+	}
+}
+
+type Task struct {
+	Key       string
+	Data      *packet.Message
+	ClientID  string
+	DelayTime time.Duration
+}
+
+func NewTask(Key string, Data *packet.Message, ClientID string, DelayTime time.Duration) *Task {
+	return &Task{
+		Key:       Key,
+		Data:      Data,
+		ClientID:  ClientID,
+		DelayTime: DelayTime,
 	}
 }

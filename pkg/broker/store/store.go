@@ -2,12 +2,14 @@ package store
 
 import (
 	"context"
+	"io"
 	"time"
 )
 
 type KeyStore interface {
 	HashStore
 	ZSetStore
+	io.Closer
 }
 
 type HashStore interface {
@@ -22,6 +24,7 @@ type ZSetStore interface {
 	ZAdd(ctx context.Context, key, member string, score float64) error
 	ZDel(ctx context.Context, key, member string) error
 	ZRange(ctx context.Context, key string, start, end float64) ([]string, error)
+	ZRangeByScore(ctx context.Context, key string, start, end float64) ([]string, error)
 }
 
 type KeyValueStoreWithTimeout struct {
@@ -62,4 +65,8 @@ func (s *KeyValueStoreWithTimeout) DefaultDeleteKey(key string) error {
 
 func (s *KeyValueStoreWithTimeout) DefaultReadPrefixKey(ctx context.Context, prefix string) (map[string]string, error) {
 	return s.KeyStore.ReadPrefixKey(ctx, prefix)
+}
+
+func (s *KeyValueStoreWithTimeout) ZAdd(ctx context.Context, key, value string, score float64) error {
+	return s.KeyStore.ZAdd(ctx, key, value, score)
 }

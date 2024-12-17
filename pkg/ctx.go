@@ -8,9 +8,11 @@ import (
 var (
 	ContextIDKey = struct {
 	}{}
-	ClientUIDKey = struct {
-	}{}
+	ClientIDKey = ClientID{}
 )
+
+type ClientID struct {
+}
 
 type ContextID struct {
 }
@@ -27,7 +29,7 @@ func GetContextID(ctx context.Context) (id string) {
 }
 
 func GetClientUID(ctx context.Context) (id string) {
-	if id, ok := ctx.Value(ClientUIDKey).(string); ok {
+	if id, ok := ctx.Value(ClientIDKey).(string); ok {
 		return id
 	}
 	return ""

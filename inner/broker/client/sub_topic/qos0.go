@@ -8,27 +8,28 @@ import (
 	"github.com/BAN1ce/skyTree/pkg/broker/client"
 	"github.com/BAN1ce/skyTree/pkg/broker/topic"
 	"github.com/BAN1ce/skyTree/pkg/packet"
-	"go.uber.org/zap"
+	"github.com/BAN1ce/skyTree/pkg/pool"
 )
 
 // QoS0 is topic with QoS0
 type QoS0 struct {
 	ctx           context.Context
 	cancel        context.CancelFunc
-	topic         string
 	messageSource broker.StreamSource
 	client        *Client
 	meta          *topic.Meta
 	messageChan   chan *packet.Message
+	ready         chan struct{}
 }
 
 func NewQoS0(meta *topic.Meta, writer client.PacketWriter, messageSource broker.StreamSource) *QoS0 {
 	q := &QoS0{
-		topic:         meta.Topic,
 		meta:          meta,
 		messageSource: messageSource,
 		client:        NewClient(writer, meta),
+		ready:         make(chan struct{}),
 	}
+	q.messageChan = make(chan *packet.Message, 1000)
 
 	return q
 }
@@ -37,21 +38,18 @@ func NewQoS0(meta *topic.Meta, writer client.PacketWriter, messageSource broker.
 // It will create a publication event listener to listen to the publication event of the store.
 func (q *QoS0) Start(ctx context.Context) error {
 	q.ctx, q.cancel = context.WithCancel(ctx)
-	q.messageChan = make(chan *packet.Message, 10)
 
 	err := q.messageSource.ListenMessage(q.ctx, q.messageChan)
 	if err != nil {
-		logger.Logger.Error("QoS0Subscriber: listen message error", zap.Error(err))
+		logger.Logger.Error().Err(err).Msg("QoS0Subscriber: listen message error")
 		return err
 	}
 
-	logger.Logger.Debug("QoS0Subscriber: start success", zap.String("topic", q.topic))
-
 	defer func() {
-		logger.Logger.Info("QoS0Subscriber: close", zap.String("topic", q.topic),
-			zap.String("clientID", q.GetID()))
+		logger.Logger.Info().Str("topic", q.meta.Topic).Str("clientID", q.GetID()).Msg("QoS0Subscriber: close")
 	}()
 
+	close(q.ready)
 	for {
 		select {
 		case <-q.ctx.Done():
@@ -68,6 +66,7 @@ func (q *QoS0) Start(ctx context.Context) error {
 
 // Close closes the QoS0
 func (q *QoS0) Close() error {
+	logger.Logger.Info().Str("topic", q.meta.Topic).Msg("QoS0Subscriber: close")
 	if q.ctx == nil {
 		return fmt.Errorf("QoS0Subscriber: ctx is nil, not start")
 	}
@@ -80,20 +79,36 @@ func (q *QoS0) Close() error {
 	return nil
 }
 
-func (q *QoS0) Publish(publish *packet.Message) error {
+func (q *QoS0) Publish(publish *packet.Message, extra *packet.MessageExtraInfo) error {
+	<-q.ready
+
 	select {
 	case q.messageChan <- publish:
 		return nil
+	case <-q.ctx.Done():
+		return fmt.Errorf("QoS0Subscriber: ctx is done")
 	default:
 		return fmt.Errorf("QoS0Subscriber: publish chan is full")
 
 	}
 }
 
-func (q *QoS0) publish(publish *packet.Message) error {
-	publish.SetSubIdentifier(byte(q.meta.Identifier))
-	publish.PublishPacket.PacketID = q.client.GetPacketWriter().NextPacketID()
-	return q.client.Publish(publish)
+func (q *QoS0) publish(message *packet.Message) error {
+	var (
+		publish    = pool.PublishPool.Get()
+		newMessage = &packet.Message{}
+	)
+	defer pool.PublishPool.Put(publish)
+
+	pool.CopyPublish(publish, message.PublishPacket)
+
+	newMessage.SubscribeTopic = q.meta.Topic
+	newMessage.PublishPacket = publish
+	newMessage.PublishPacket.QoS = broker.QoS0
+	newMessage.SetSubIdentifier(byte(q.meta.Identifier))
+	newMessage.PublishPacket.PacketID = q.client.GetPacketWriter().NextPacketID()
+
+	return q.client.Publish(newMessage)
 }
 
 func (q *QoS0) GetID() string {
@@ -104,6 +119,6 @@ func (q *QoS0) GetUnFinishedMessage() []*packet.Message {
 	return nil
 }
 
-func (q *QoS0) Meta() topic.Meta {
-	return *q.meta
+func (q *QoS0) Meta() *topic.Meta {
+	return q.meta
 }

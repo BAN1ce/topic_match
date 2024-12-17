@@ -17,6 +17,27 @@ var (
 	MQTTEvent = newMQTT()
 )
 
+var (
+	packetTypeString = []string{
+		"",
+		"CONNECT",
+		"CONNACK",
+		"PUBLISH",
+		"PUBACK",
+		"PUBREC",
+		"PUBREL",
+		"PUBCOMP",
+		"SUBSCRIBE",
+		"SUBACK",
+		"UNSUBSCRIBE",
+		"UNSUBACK",
+		"PINGREQ",
+		"PINGRESP",
+		"DISCONNECT",
+		"AUTH",
+	}
+)
+
 type MQTT struct {
 }
 
@@ -32,6 +53,7 @@ func (e *MQTT) EmitReceivedMQTTPacketEvent(packetType byte) {
 }
 
 func (e *MQTT) EmitSendMQTTPacketEvent(packetType byte) {
+	logger.Logger.Debug().Str("packet type", packetTypeString[packetType]).Msg("write packet")
 	eventDriver.Emit(MQTTSendPacketEvent, packetType)
 }
 
@@ -43,7 +65,7 @@ func (e *MQTT) addDefaultListener() {
 func (e *MQTT) registerReceivedMetric() {
 	eventDriver.AddListener(MQTTReceivedPacketEvent, func(i ...interface{}) {
 		if len(i) != 1 {
-			logger.Logger.Error("invalid parameter")
+			logger.Logger.Error().Msg("invalid parameter")
 			return
 		}
 
@@ -86,7 +108,7 @@ func (e *MQTT) registerReceivedMetric() {
 		case packets.AUTH:
 			metric.ReceivedAuth.Inc()
 		default:
-			logger.Logger.Error("unknown packet type")
+			logger.Logger.Error().Any("packet", event).Msg("unknown packet type")
 		}
 
 	})
@@ -95,7 +117,7 @@ func (e *MQTT) registerReceivedMetric() {
 func (e *MQTT) registerSendMetric() {
 	eventDriver.AddListener(MQTTSendPacketEvent, func(i ...interface{}) {
 		if len(i) != 1 {
-			logger.Logger.Error("invalid parameter")
+			logger.Logger.Error().Msg("invalid parameter")
 			return
 		}
 
@@ -108,6 +130,9 @@ func (e *MQTT) registerSendMetric() {
 
 		case packets.DISCONNECT:
 			metric.SendDisconnect.Inc()
+
+		case packets.CONNACK:
+			metric.SendConnectAck.Inc()
 
 		case packets.PINGRESP:
 			metric.SendPong.Inc()
@@ -136,7 +161,7 @@ func (e *MQTT) registerSendMetric() {
 		case packets.AUTH:
 			metric.SendAuthAck.Inc()
 		default:
-			logger.Logger.Error("unknown packet type")
+			logger.Logger.Error().Any("packet", event).Msg("unknown packet type")
 		}
 	})
 }

@@ -64,8 +64,9 @@ type WillMessage struct {
 	Property    *WillProperties `json:"property"`
 	Retain      bool            `json:"retain"`
 	Payload     []byte          `json:"payload"`
-	DelayTaskID string          `json:"delayTaskID"`
-	CreatedTime string          `json:"createdTime"`
+	DelayTaskID string          `json:"delay_task_id"`
+	CreatedTime string          `json:"created_time"`
+	ClientID    string          `json:"client_id"`
 }
 
 func (w *WillMessage) ToPublishPacket() *packets.Publish {

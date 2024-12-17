@@ -1,8 +1,9 @@
 package facade
 
 import (
-	"context"
 	"github.com/BAN1ce/skyTree/config"
+	"github.com/BAN1ce/skyTree/inner/metric"
+	"github.com/BAN1ce/skyTree/logger"
 	"github.com/BAN1ce/skyTree/pkg/retry"
 	"sync"
 )
@@ -13,44 +14,78 @@ type RetrySchedule interface {
 }
 
 var (
-	publishRetry RetrySchedule
-	pubRelRetry  RetrySchedule
-)
-var (
-	OncePublishRetry sync.Once
-	OncePubRelRetry  sync.Once
+	oncePublishRetry sync.Once
+	publishRetry     *PublishRetry
+	pubRelRetry      RetrySchedule
+	oncePubRelRetry  sync.Once
 )
 
-func SinglePublishRetry(option ...retry.Option) RetrySchedule {
-	OncePublishRetry.Do(func() {
-		var s = retry.NewSchedule(config.GetRootContext(), option...)
-		s.Start()
-		publishRetry = s
+/*
 
+ */
+// ----------------------------------  PublishRetry ----------------------------------//
+/**
+
+ */
+
+type PublishRetry struct {
+	schedule *retry.DelayTaskSchedule
+}
+
+func InitPublishRetry(call, timeout func(task *retry.Task) error, option ...retry.Option) RetrySchedule {
+	oncePublishRetry.Do(func() {
+		publishRetry = newPublishRetry(call, timeout, option...)
+		publishRetry.schedule.Start()
 	})
 	return publishRetry
 }
 
+func newPublishRetry(call, timeout func(t *retry.Task) error, option ...retry.Option) *PublishRetry {
+	p := &PublishRetry{}
+	p.schedule = retry.NewSchedule(config.GetRootContext(), call, timeout, option...)
+	return p
+}
+
+func (p *PublishRetry) Retry(t *retry.Task) error {
+	return nil
+
+}
+
+func (p *PublishRetry) Timeout(t *retry.Task) error {
+	return nil
+}
+
 func GetPublishRetry() RetrySchedule {
-	var (
-		cfg = config.GetTimeWheel()
-	)
-	return SinglePublishRetry(retry.WithInterval(cfg.GetInterval()), retry.WithSlotNum(cfg.GetSlotNum()))
+	return publishRetry
 }
 
-func DeletePublishRetryKey(key string) {
-	GetPubRelRetry().Delete(key)
+func (p *PublishRetry) Create(task *retry.Task) error {
+
+	metric.PublishRetryTaskCurrent.Inc()
+	metric.PublishRetryTaskCount.WithLabelValues(task.Data.GetFullTopic()).Inc()
+	return p.schedule.Create(task)
 }
 
-func SinglePubRelRetry(ctx context.Context, option ...retry.Option) RetrySchedule {
-	OncePubRelRetry.Do(func() {
-		var s = retry.NewSchedule(ctx, option...)
-		s.Start()
-		pubRelRetry = s
-	})
-	return pubRelRetry
+func (p *PublishRetry) Delete(key string) {
+	metric.PublishRetryTaskCurrent.Add(-1)
+	metric.PublishRetryDelete.Inc()
+	logger.Logger.Debug().Msg("PublishRetry Delete")
+	p.schedule.Delete(key)
 }
 
-func GetPubRelRetry() RetrySchedule {
-	return SinglePubRelRetry(config.GetRootContext())
-}
+//func DeletePublishRetryKey(key string) {
+//	GetPubRelRetry().Delete(key)
+//}
+//
+//func SinglePubRelRetry(ctx context.Context, option ...retry.Option) RetrySchedule {
+//	oncePubRelRetry.Do(func() {
+//		var s = retry.NewSchedule(ctx, option...)
+//		s.Start()
+//		pubRelRetry = s
+//	})
+//	return pubRelRetry
+//}
+//
+//func GetPubRelRetry() RetrySchedule {
+//	return SinglePubRelRetry(config.GetRootContext())
+//}

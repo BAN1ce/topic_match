@@ -38,5 +38,12 @@ func CopyPublish(dest *packets.Publish, src *packets.Publish) {
 	dest.Topic = src.Topic
 	dest.PacketID = src.PacketID
 	dest.Payload = src.Payload
-	dest.Properties = src.Properties
+
+	if src.Properties != nil {
+		dest.Properties = &packets.Properties{}
+		*dest.Properties = *src.Properties
+	} else {
+		dest.Properties = nil
+	}
+
 }

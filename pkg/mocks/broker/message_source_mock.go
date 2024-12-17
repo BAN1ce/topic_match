@@ -35,6 +35,20 @@ func (m *MockMessageSource) EXPECT() *MockMessageSourceMockRecorder {
 	return m.recorder
 }
 
+// Close mocks base method.
+func (m *MockMessageSource) Close() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockMessageSourceMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockMessageSource)(nil).Close))
+}
+
 // ListenMessage mocks base method.
 func (m *MockMessageSource) ListenMessage(ctx context.Context, writer chan *packet.Message) error {
 	m.ctrl.T.Helper()
@@ -50,18 +64,18 @@ func (mr *MockMessageSourceMockRecorder) ListenMessage(ctx, writer interface{}) 
 }
 
 // NextMessages mocks base method.
-func (m *MockMessageSource) NextMessages(ctx context.Context, n int, startMessageID string, include bool) ([]*packet.Message, error) {
+func (m *MockMessageSource) NextMessages(ctx context.Context, n int, startMessageID string, include bool, in chan *packet.Message) ([]*packet.Message, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NextMessages", ctx, n, startMessageID, include)
+	ret := m.ctrl.Call(m, "NextMessages", ctx, n, startMessageID, include, in)
 	ret0, _ := ret[0].([]*packet.Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // NextMessages indicates an expected call of NextMessages.
-func (mr *MockMessageSourceMockRecorder) NextMessages(ctx, n, startMessageID, include interface{}) *gomock.Call {
+func (mr *MockMessageSourceMockRecorder) NextMessages(ctx, n, startMessageID, include, in interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextMessages", reflect.TypeOf((*MockMessageSource)(nil).NextMessages), ctx, n, startMessageID, include)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextMessages", reflect.TypeOf((*MockMessageSource)(nil).NextMessages), ctx, n, startMessageID, include, in)
 }
 
 // MockReadMessageSource is a mock of ReadMessageSource interface.
@@ -88,18 +102,18 @@ func (m *MockReadMessageSource) EXPECT() *MockReadMessageSourceMockRecorder {
 }
 
 // NextMessages mocks base method.
-func (m *MockReadMessageSource) NextMessages(ctx context.Context, n int, startMessageID string, include bool) ([]*packet.Message, error) {
+func (m *MockReadMessageSource) NextMessages(ctx context.Context, n int, startMessageID string, include bool, in chan *packet.Message) ([]*packet.Message, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "NextMessages", ctx, n, startMessageID, include)
+	ret := m.ctrl.Call(m, "NextMessages", ctx, n, startMessageID, include, in)
 	ret0, _ := ret[0].([]*packet.Message)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // NextMessages indicates an expected call of NextMessages.
-func (mr *MockReadMessageSourceMockRecorder) NextMessages(ctx, n, startMessageID, include interface{}) *gomock.Call {
+func (mr *MockReadMessageSourceMockRecorder) NextMessages(ctx, n, startMessageID, include, in interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextMessages", reflect.TypeOf((*MockReadMessageSource)(nil).NextMessages), ctx, n, startMessageID, include)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextMessages", reflect.TypeOf((*MockReadMessageSource)(nil).NextMessages), ctx, n, startMessageID, include, in)
 }
 
 // MockStreamSource is a mock of StreamSource interface.
@@ -123,6 +137,20 @@ func NewMockStreamSource(ctrl *gomock.Controller) *MockStreamSource {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockStreamSource) EXPECT() *MockStreamSourceMockRecorder {
 	return m.recorder
+}
+
+// Close mocks base method.
+func (m *MockStreamSource) Close() error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Close")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Close indicates an expected call of Close.
+func (mr *MockStreamSourceMockRecorder) Close() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Close", reflect.TypeOf((*MockStreamSource)(nil).Close))
 }
 
 // ListenMessage mocks base method.

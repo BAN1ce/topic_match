@@ -14,6 +14,10 @@ func (l *Local) AddListener(eventName string, listener events.Listener) {
 	l.e.AddListener(events.EventName(eventName), listener)
 }
 
+func (l *Local) AddListenerOnce(eventName string, listener events.Listener) {
+	l.e.Once(events.EventName(eventName), listener)
+}
+
 func (l *Local) RemoveListener(eventName string, listener events.Listener) {
 	l.e.RemoveListener(events.EventName(eventName), listener)
 }

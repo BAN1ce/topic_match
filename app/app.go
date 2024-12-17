@@ -2,27 +2,32 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/BAN1ce/skyTree/api"
 	"github.com/BAN1ce/skyTree/config"
 	"github.com/BAN1ce/skyTree/inner/broker/client"
 	"github.com/BAN1ce/skyTree/inner/broker/core"
+	"github.com/BAN1ce/skyTree/inner/broker/monitor"
 	"github.com/BAN1ce/skyTree/inner/broker/retain"
 	"github.com/BAN1ce/skyTree/inner/broker/session"
 	"github.com/BAN1ce/skyTree/inner/broker/state"
 	"github.com/BAN1ce/skyTree/inner/broker/store"
-	"github.com/BAN1ce/skyTree/inner/broker/store/db"
 	"github.com/BAN1ce/skyTree/inner/broker/store/message"
-	"github.com/BAN1ce/skyTree/inner/broker/subscription"
+	"github.com/BAN1ce/skyTree/inner/broker/sub_center"
+	"github.com/BAN1ce/skyTree/inner/broker/will"
 	"github.com/BAN1ce/skyTree/inner/event"
 	"github.com/BAN1ce/skyTree/inner/event/driver"
 	"github.com/BAN1ce/skyTree/inner/facade"
 	"github.com/BAN1ce/skyTree/inner/version"
+	"github.com/BAN1ce/skyTree/logger"
 	broker2 "github.com/BAN1ce/skyTree/pkg/broker"
+	"github.com/BAN1ce/skyTree/pkg/broker/message/serializer"
 	"github.com/BAN1ce/skyTree/pkg/broker/plugin"
-	"github.com/nutsdb/nutsdb"
+	"io"
 	"log"
 	"sync"
+	"time"
 )
 
 type component interface {
@@ -36,6 +41,8 @@ type App struct {
 	brokerCore *core.Broker
 	components []component
 	mux        sync.Mutex
+	wg         sync.WaitGroup
+	closer     []io.Closer
 }
 
 func NewApp() *App {
@@ -52,46 +59,45 @@ func NewApp() *App {
 	//}...); err != nil {
 	//	log.Fatal("start store cluster failed", err)
 	//}
-	event.SetEventDriverOnce(driver.NewLocal())
 
+	var (
+		eventDriver = driver.NewLocal()
+	)
+	event.SetEventDriverOnce(eventDriver)
 	var (
 		clientManager = client.NewClients()
+		sessionStore  = newStore("session")
+		messageStore  = newStore("message")
+		stateStore    = newStore("state")
+		brokerState   = state.NewState(stateStore)
 
-		localNutsDBStore = db.NewLocalStore(nutsdb.Options{
-			EntryIdxMode: nutsdb.HintKeyValAndRAMIdxMode,
-			SegmentSize:  nutsdb.MB * 256,
-			NodeNum:      1,
-			RWMode:       nutsdb.MMap,
-			SyncEnable:   true,
-		}, nutsdb.WithDir("./data/nutsdb"))
+		sessionManager = session.NewSessions(sessionStore)
+		storeWrapper   = message.NewStoreWrapper(messageStore, event.StoreEvent)
 
-		keyVStore = localNutsDBStore
-		//keyVStore = db.NewRedis()
-		sessionManager = session.NewSessions(keyVStore)
-
-		subscriptionCore = broker2.NewLocalSubCenter()
+		subCenter   = broker2.NewLocalSubCenter()
+		willMonitor = will.NewWillMessageMonitor(eventDriver, brokerState, subCenter, storeWrapper, sessionManager)
 	)
-	var (
-		storeWrapper = message.NewStoreWrapper(localNutsDBStore, event.StoreEvent)
-	)
-	store.Boot(storeWrapper, event.StoreEvent)
+
+	store.SetDefault(storeWrapper, event.MessageEvent, serializer.ProtoBufVersion)
 
 	// TODO: fix this
 	//event.Message.CreateListenClientOffline(shareTopicManger.CloseClient)
 
 	var (
-		publishRetrySchedule = facade.SinglePublishRetry()
+		publishRetrySchedule = facade.InitPublishRetry(clientManager.RetryPublish, clientManager.RetryPublishTimeout)
 
 		brokerCore = core.NewBroker(
-			core.WithRetainStore(retain.NewRetainDB(keyVStore)),
-			core.WithKeyStore(keyVStore),
+			core.WithRetainStore(retain.NewRetainDB(sessionStore)),
+			core.WithKeyStore(sessionStore),
+			core.WithWillMessageMonitor(willMonitor),
 			core.WithPlugins(plugin.NewDefaultPlugin()),
 			core.WithPublishRetry(publishRetrySchedule),
 			core.WithMessageStore(storeWrapper),
-			core.WithState(state.NewState(keyVStore)),
+			core.WithState(brokerState),
 			core.WithSessionManager(sessionManager),
 			core.WithClientManager(clientManager),
-			core.WithSubCenter(subscription.NewWrapper(subscriptionCore)),
+			core.WithSubCenter(sub_center.NewSubCenterWrapper(subCenter)),
+			core.WithEvent(eventDriver),
 			core.WithHandlers(&core.Handlers{
 				Connect:     core.NewConnectHandler(),
 				Publish:     core.NewPublishHandler(),
@@ -111,11 +117,22 @@ func NewApp() *App {
 	)
 	app.components = []component{
 		app.brokerCore,
-		api.NewAPI(fmt.Sprintf(":%d", config.GetServer().GetPort()),
-			api.WithClientManager(clientManager),
-			api.WithTopicManager(brokerCore),
-			api.WithStore(localNutsDBStore),
-			api.WithSessionManager(sessionManager)),
+		willMonitor,
+
+		monitor.NewMessage(time.Second*30, messageStore),
+
+		api.NewAPI(fmt.Sprintf(":%d", config.GetConfig().Server.Port), &api.Component{
+			TopicManager:   brokerCore,
+			ClientManager:  clientManager,
+			MessageStore:   messageStore,
+			SessionManager: sessionManager,
+		}),
+	}
+	app.closer = []io.Closer{
+		app.brokerCore,
+		messageStore,
+		stateStore,
+		sessionStore,
 	}
 	return app
 }
@@ -123,20 +140,37 @@ func NewApp() *App {
 func (a *App) Start(ctx context.Context) {
 	a.mux.Lock()
 	defer a.mux.Unlock()
-	a.ctx = ctx
+	a.ctx, a.cancel = context.WithCancel(ctx)
 	for _, c := range a.components {
+		a.wg.Add(1)
 		go func(c component) {
+			logger.Logger.Info().Str("component", c.Name()).Msg("starting")
 			if err := c.Start(ctx); err != nil {
 				log.Fatalln("start component", c.Name(), "error: ", err)
 			}
+			a.wg.Done()
+			logger.Logger.Info().Str("component", c.Name()).Msg("closed")
 		}(c)
 	}
 }
 
-func (a *App) Stop() {
+func (a *App) Close() error {
 	a.mux.Lock()
 	defer a.mux.Unlock()
+	var err error
 	a.cancel()
+
+	for _, c := range a.closer {
+		if err1 := c.Close(); err1 != nil {
+			err = errors.Join(err, err1)
+		}
+	}
+
+	logger.Logger.Info().Msg("All closes executed")
+
+	a.wg.Wait()
+	return err
+
 }
 
 func (a *App) Version() string {

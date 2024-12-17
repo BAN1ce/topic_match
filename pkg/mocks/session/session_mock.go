@@ -156,10 +156,10 @@ func (mr *MockSessionMockRecorder) GetWillMessage() *gomock.Call {
 }
 
 // ReadSubTopics mocks base method.
-func (m *MockSession) ReadSubTopics() []topic.Meta {
+func (m *MockSession) ReadSubTopics() []*topic.Meta {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReadSubTopics")
-	ret0, _ := ret[0].([]topic.Meta)
+	ret0, _ := ret[0].([]*topic.Meta)
 	return ret0
 }
 
@@ -346,10 +346,10 @@ func (mr *MockTopicManagerMockRecorder) DeleteTopicUnFinishedMessage(topic, mess
 }
 
 // ReadSubTopics mocks base method.
-func (m *MockTopicManager) ReadSubTopics() []topic.Meta {
+func (m *MockTopicManager) ReadSubTopics() []*topic.Meta {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ReadSubTopics")
-	ret0, _ := ret[0].([]topic.Meta)
+	ret0, _ := ret[0].([]*topic.Meta)
 	return ret0
 }
 

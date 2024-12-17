@@ -4,7 +4,6 @@ import (
 	"github.com/BAN1ce/skyTree/logger"
 	"github.com/BAN1ce/skyTree/pkg/packet"
 	"github.com/eclipse/paho.golang/packets"
-	"go.uber.org/zap"
 	"sync"
 )
 
@@ -14,7 +13,7 @@ type QoS2ReceiveStore struct {
 	waiting map[uint16]*packet.Message
 }
 
-func NewQoS2Handler() *QoS2ReceiveStore {
+func NewQoS2ReceiveStore() *QoS2ReceiveStore {
 	return &QoS2ReceiveStore{
 		waiting: make(map[uint16]*packet.Message),
 	}
@@ -32,12 +31,12 @@ func (w *QoS2ReceiveStore) StoreNotExists(publish *packets.Publish) bool {
 	w.waiting[publish.PacketID] = &packet.Message{
 		PublishPacket: publish,
 	}
-	logger.Logger.Debug("QoS2ReceiveStore: handle publish", zap.Uint16("packet id", publish.PacketID))
+	logger.Logger.Debug().Msg("QoS2ReceiveStore: store not exists")
 	return true
 }
 
 // Delete HandlePubRec handles the PubRec packet from the client
-// If the packet UID is not found, it will return false
+// If the packet ClientID is not found, it will return false
 func (w *QoS2ReceiveStore) Delete(pubRel *packets.Pubrel) (*packets.Publish, bool) {
 	w.mux.Lock()
 	defer w.mux.Unlock()

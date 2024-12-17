@@ -9,6 +9,7 @@ import (
 	"github.com/BAN1ce/skyTree/inner/broker/server"
 	"github.com/BAN1ce/skyTree/inner/broker/state"
 	"github.com/BAN1ce/skyTree/inner/broker/store/message"
+	"github.com/BAN1ce/skyTree/inner/broker/will"
 	"github.com/BAN1ce/skyTree/inner/event"
 	"github.com/BAN1ce/skyTree/inner/facade"
 	"github.com/BAN1ce/skyTree/logger"
@@ -20,11 +21,8 @@ import (
 	"github.com/BAN1ce/skyTree/pkg/broker/store"
 	"github.com/BAN1ce/skyTree/pkg/middleware"
 	"github.com/BAN1ce/skyTree/pkg/model"
-	packet2 "github.com/BAN1ce/skyTree/pkg/packet"
 	"github.com/BAN1ce/skyTree/pkg/pool"
 	"github.com/eclipse/paho.golang/packets"
-	"go.uber.org/zap"
-	"log"
 	"net"
 	"sync"
 	"time"
@@ -54,6 +52,7 @@ type brokerHandler interface {
 
 type Broker struct {
 	ctx                    context.Context
+	cancel                 context.CancelFunc
 	server                 *server.Server
 	state                  *state.State
 	userAuth               middleware.UserAuth
@@ -61,32 +60,31 @@ type Broker struct {
 	messageStore           *message.Wrapper
 	keyStore               store.KeyStore
 	clientManager          *client.Clients
+	conns                  map[net.Conn]struct{}
 	sessionManager         session.Manager
 	publishPool            *pool.Publish
 	publishRetry           facade.RetrySchedule
 	preMiddleware          map[byte][]middleware.PacketMiddleware
 	handlers               *Handlers
-	mux                    sync.Mutex
+	mux                    sync.RWMutex
 	plugins                *plugin.Plugins
 	clientKeepAliveMonitor *monitor.KeepAlive
+	willMessageMonitor     *will.MessageMonitor
 	retain                 retain.Retain
+	clientWg               sync.WaitGroup
+	event                  event.Driver
 }
 
 func NewBroker(option ...Option) *Broker {
 	var (
-		ip   = `0.0.0.0`
-		port = config.GetServer().GetBrokerPort()
-		b    = &Broker{
+		b = &Broker{
 			publishPool:   pool.NewPublish(),
 			preMiddleware: make(map[byte][]middleware.PacketMiddleware),
+			conns:         make(map[net.Conn]struct{}, 50000),
 		}
 	)
 	b.initMiddleware()
-	tcpAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", ip, port))
-	if err != nil {
-		log.Fatalln("resolve tcp addr error: ", err)
-	}
-	b.server = server.NewTCPServer(tcpAddr)
+	b.server = server.NewServer(config.GetConfig().Broker.Listen)
 
 	for _, opt := range option {
 		opt(b)
@@ -101,13 +99,13 @@ func (b *Broker) Name() string {
 }
 
 func (b *Broker) Start(ctx context.Context) error {
-	b.ctx = ctx
+	b.ctx, b.cancel = context.WithCancel(ctx)
 	go func() {
 		if err := b.clientKeepAliveMonitor.Start(b.ctx); err != nil {
-			logger.Logger.Error("client keep alive monitor start error", zap.Error(err))
+			logger.Logger.Error().Err(err).Msg("client keep alive monitor start error")
 		}
 	}()
-	if err := b.server.Start(); err != nil {
+	if err := b.server.Start(b.ctx); err != nil {
 		return err
 	}
 	b.acceptConn()
@@ -115,49 +113,100 @@ func (b *Broker) Start(ctx context.Context) error {
 }
 
 func (b *Broker) acceptConn() {
-	var wg sync.WaitGroup
 	for {
-		conn, ok := b.server.Conn()
-		if !ok {
-			logger.Logger.Info("server closed")
-			return
-		}
-		newClient := client.NewClient(conn, client.WithConfig(client.Config{
-			WindowSize:       10,
-			ReadStoreTimeout: 3 * time.Second,
-		}), client.WithNotifyClose(b), client.WithPlugin(b.plugins), client.WithRetain(b.retain), client.WithStore(b.messageStore))
+		select {
+		case <-b.ctx.Done():
+			logger.Logger.Info().Msg("broker closing")
+			b.mux.RLock()
+			var conns = make([]net.Conn, len(b.conns))
+			for c := range b.conns {
+				conns = append(conns, c)
+			}
+			b.mux.RUnlock()
 
-		wg.Add(1)
-		go func(c *client.Client) {
-			c.Run(b.ctx, b)
-			b.OnClientClose(c)
-			wg.Done()
-			logger.Logger.Info("client closed", zap.String("client", c.MetaString()))
-		}(newClient)
+			for _, conn := range conns {
+				if conn != nil {
+					_ = conn.Close()
+				} else {
+					logger.Logger.Info().Msg("conn is nil")
+				}
+			}
+			logger.Logger.Info().Msg("broker closed, close all client connection")
+
+			return
+
+		case conn, ok := <-b.server.Conn():
+			if !ok {
+				logger.Logger.Info().Msg("server closed")
+				return
+			}
+
+			if conn != nil {
+				b.mux.Lock()
+				b.conns[conn] = struct{}{}
+				b.mux.Unlock()
+			}
+
+			newClient := client.NewClient(conn,
+				client.WithConfig(
+					client.Config{
+						WindowSize:       10,
+						ReadStoreTimeout: 3 * time.Second,
+					}),
+				client.WithNotifyClose(b),
+				client.WithPlugin(b.plugins),
+				client.WithRetain(b.retain),
+				client.WithStore(b.messageStore),
+				client.WithSubCenter(b.subTree),
+				client.WithMessageStoreWrapper(b.messageStore),
+				client.WithEvent(b.event),
+				client.WithMonitorKeepAlive(b.clientKeepAliveMonitor),
+			)
+
+			b.clientWg.Add(1)
+			go func(c *client.Client) {
+				c.Run(b.ctx, b)
+				b.OnClientClose(c)
+				b.mux.Lock()
+				delete(b.conns, c.GetConn())
+				b.mux.Unlock()
+				b.clientWg.Done()
+				logger.Logger.Info().Str("client", c.MetaString()).Msg("client closed")
+			}(newClient)
+		}
 	}
+}
+
+func (b *Broker) Close() error {
+	b.cancel()
+	err := b.server.Close()
+
+	b.clientWg.Wait()
+	return err
+
 }
 
 func (b *Broker) OnClientClose(c *client.Client) {
 	b.mux.Lock()
 	defer b.mux.Unlock()
 
-	if err := b.clientKeepAliveMonitor.DeleteClient(context.TODO(), c.GetUid()); err != nil {
-		logger.Logger.Error("delete client keep alive monitor error", zap.Error(err), zap.String("uid", c.GetUid()))
+	if err := b.clientKeepAliveMonitor.DeleteClient(context.TODO(), c.GetID()); err != nil {
+		logger.Logger.Error().Err(err).Str("uid", c.GetID()).Msg("delete client keep alive monitor error")
 	}
 }
 
 func (b *Broker) OnClose(c *client.Client) {
-	logger.Logger.Debug("broker receive client close event", zap.String("client", c.MetaString()))
+	logger.Logger.Debug().Str("client", c.MetaString()).Msg("client close")
 }
 
-// ------------------------------------ handle client MQTT PublishPacket ------------------------------------//
+// ------------------------------------ handle client MQTT Packet ------------------------------------//
 
 func (b *Broker) HandlePacket(ctx context.Context, packet *packets.ControlPacket, client *client.Client) (err error) {
 	// TODO : check MQTT version
 	if err = b.executePreMiddleware(client, packet); err != nil {
 		return
 	}
-	logger.Logger.Debug("Handle Receive Packet", zap.String("client", client.MetaString()), zap.Any("packet", packet))
+	logger.Logger.Debug().Str("packet type", packet.PacketType()).Str("client", client.MetaString()).Msg("handle received packet")
 
 	// TODO: emit event with packet.Content pointer to avoid copy ?  but need to check if it is safe.
 	event.MQTTEvent.EmitReceivedMQTTPacketEvent(packet.FixedHeader.Type)
@@ -187,7 +236,7 @@ func (b *Broker) HandlePacket(ctx context.Context, packet *packets.ControlPacket
 	case packets.AUTH:
 		err = b.handlers.Auth.Handle(b, client, packet)
 	default:
-		logger.Logger.Warn("unknown packet type = ", zap.Uint8("type", packet.FixedHeader.Type))
+		logger.Logger.Warn().Uint8("type", packet.FixedHeader.Type).Msg("unknown packet type")
 		err = fmt.Errorf("unknown packet type = %d", packet.FixedHeader.Type)
 	}
 	return
@@ -196,7 +245,7 @@ func (b *Broker) HandlePacket(ctx context.Context, packet *packets.ControlPacket
 func (b *Broker) executePreMiddleware(client *client.Client, packet *packets.ControlPacket) error {
 	for _, midHandle := range b.preMiddleware[packet.FixedHeader.Type] {
 		if err := midHandle.Handle(client, packet); err != nil {
-			logger.Logger.Error("middleware handle error: ", zap.Error(err), zap.String("client", client.MetaString()))
+			logger.Logger.Error().Err(err).Str("client", client.MetaString()).Any("packet", packet).Msg("middleware handle error")
 			client.Close()
 			return err
 		}
@@ -207,8 +256,8 @@ func (b *Broker) executePreMiddleware(client *client.Client, packet *packets.Con
 // ----------------------------------------- support ---------------------------------------------------//
 // writePacket for collect all error log
 func (b *Broker) writePacket(client *client.Client, packet packets.Packet) {
-	if err := client.WritePacket(client2.NewWritePacket(packet)); err != nil {
-		logger.Logger.Warn("write packet error", zap.Error(err), zap.String("client", client.MetaString()))
+	if err := client.Write(client2.NewWritePacket(packet)); err != nil {
+		logger.Logger.Warn().Err(err).Str("client", client.MetaString()).Msg("write packet error")
 
 	}
 }
@@ -235,12 +284,10 @@ func (b *Broker) deleteClient(uid string) {
 
 	event.ClientEvent.EmitClientDeleteSuccess(uid)
 
-	logger.Logger.Debug("broker delete deleteClient", zap.String("uid", uid))
-
 	b.clientManager.DestroyClient(uid)
 
 	if err := b.clientKeepAliveMonitor.DeleteClient(ctx, uid); err != nil {
-		logger.Logger.Error("delete deleteClient keep alive monitor error", zap.Error(err), zap.String("uid", uid))
+		logger.Logger.Error().Err(err).Str("uid", uid).Msg("delete client keep alive monitor error")
 	}
 
 }
@@ -248,57 +295,14 @@ func (b *Broker) deleteClient(uid string) {
 func (b *Broker) NotifyClientClose(client *client.Client) {
 	b.mux.Lock()
 	defer b.mux.Unlock()
-	b.deleteClient(client.GetUid())
+	b.deleteClient(client.GetID())
 }
 
 func (b *Broker) NotifyWillMessage(willMessage *session.WillMessage) {
-	var (
-		publishMessage = &packet2.Message{
-			PublishPacket: willMessage.ToPublishPacket(),
-			PubRelPacket:  nil,
-			ExpiredTime:   0,
-			Will:          true,
-			State:         0,
-		}
-	)
-	logger.Logger.Info("notify will message", zap.String("topic", willMessage.Topic))
-
-	event.MessageEvent.EmitReceivedPublishDone(willMessage.Topic, publishMessage)
-
-	topics := b.subTree.MatchTopic(willMessage.Topic)
-
-	if len(topics) == 0 {
-		logger.Logger.Info("notify will message, no client subscribe topic", zap.String("topic", willMessage.Topic))
-		return
-	}
-	if _, err := b.messageStore.StorePublishPacket(topics, publishMessage); err != nil {
-		logger.Logger.Error("messageStore will message publish packet error", zap.Error(err), zap.String("topic", willMessage.Topic))
-		return
-	}
+	b.willMessageMonitor.PublishWillMessage(b.ctx, willMessage)
 
 }
 
-func (b *Broker) ReadTopicRetainMessage(topic string) []*packet2.Message {
-	var (
-		retainMessage  []*packet2.Message
-		messageID, err = b.state.ReadRetainMessageID(topic)
-		ctx, cancel    = context.WithCancel(b.ctx)
-	)
-	cancel()
-	if err != nil {
-		logger.Logger.Error("read retain message error", zap.Error(err), zap.String("topic", topic))
-		return nil
-	}
-	for _, id := range messageID {
-		if err := b.messageStore.ReadPublishMessage(ctx, topic, id, 1, true, func(message *packet2.Message) {
-			retainMessage = append(retainMessage, message)
-		}); err != nil {
-			logger.Logger.Error("read retain message error", zap.Error(err), zap.String("topic", topic), zap.String("messageID", id))
-		}
-	}
-	return retainMessage
-
-}
 func (b *Broker) ReleaseSession(clientID string) {
 	var (
 		clientSession, ok = b.sessionManager.ReadClientSession(context.TODO(), clientID)
@@ -308,7 +312,7 @@ func (b *Broker) ReleaseSession(clientID string) {
 	}
 
 	if willMessage, ok, err := clientSession.GetWillMessage(); err != nil {
-		logger.Logger.Error("get will message failed", zap.Error(err), zap.String("clientID", clientID))
+		logger.Logger.Error().Err(err).Str("clientID", clientID).Msg("get will message failed")
 	} else if ok {
 		// delete will message from delay queue
 		facade.GetWillDelay().Delete(willMessage.DelayTaskID)

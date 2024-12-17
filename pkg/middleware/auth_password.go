@@ -26,7 +26,7 @@ func (p *AuthPassword) Handle(client *client.Client, packet *packets.ControlPack
 	if !p.auth.Auth(con.Username, string(con.Password)) {
 		connAck := packets.NewControlPacket(packets.CONNACK).Content.(*packets.Connack)
 		connAck.ReasonCode = packets.ConnackBadUsernameOrPassword
-		client.WritePacket(&client2.WritePacket{
+		client.Write(&client2.WritePacket{
 			Packet: connAck,
 		})
 		return errs.ErrPasswordWrong

@@ -2,18 +2,20 @@ package topic
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/BAN1ce/skyTree/pkg/packet"
 	"github.com/BAN1ce/skyTree/pkg/utils"
 	"github.com/eclipse/paho.golang/packets"
 	"strings"
+	"sync"
 )
 
 type Topic interface {
 	Start(ctx context.Context) error
 	Close() error
-	Publish(publish *packet.Message) error
+	Publish(publish *packet.Message, extra *packet.MessageExtraInfo) error
 	GetUnFinishedMessage() []*packet.Message
-	Meta() Meta
+	Meta() *Meta
 }
 
 type QoS0Subscriber interface {
@@ -22,16 +24,17 @@ type QoS0Subscriber interface {
 
 type QoS1Subscriber interface {
 	Topic
-	HandlePublishAck(puback *packets.Puback) (ok bool, err error)
+	HandlePublishAck(puback *packets.Puback) (err error)
 }
 
 type QoS2Subscriber interface {
 	Topic
-	HandlePublishRec(pubrec *packets.Pubrec) (ok bool, err error)
-	HandlePublishComp(pubcomp *packets.Pubcomp) (ok bool, err error)
+	HandlePublishRec(pubrec *packets.Pubrec) (err error)
+	HandlePublishComp(pubcomp *packets.Pubcomp) (err error)
 }
 
 type Meta struct {
+	mux               sync.RWMutex
 	Identifier        int            `json:"identifier,omitempty"`
 	Topic             string         `json:"topic"`
 	NoLocal           bool           `json:"no_local"`
@@ -43,6 +46,29 @@ type Meta struct {
 	Properties        []packets.User `json:"properties"`
 	Share             bool           `json:"share"`
 	ShareTopic        *ShareTopic    `json:"share_topic"`
+}
+
+func (m *Meta) SetLatestMessageID(id string) {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	m.LatestMessageID = id
+}
+
+func (m *Meta) Meta() *Meta {
+	m.mux.RLock()
+	defer m.mux.RUnlock()
+	var tmp Meta
+
+	b, _ := json.Marshal(m)
+	json.Unmarshal(b, &tmp)
+	return &tmp
+}
+
+func (m *Meta) String() string {
+	m.mux.RLock()
+	defer m.mux.RUnlock()
+	b, _ := json.Marshal(m)
+	return string(b)
 }
 
 func NewMetaFromSubPacket(subOption *packets.SubOptions, properties *packets.Properties) *Meta {

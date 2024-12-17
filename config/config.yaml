@@ -1,5 +1,44 @@
-
-
-
-
-
+broker:
+  connectAckProperty:
+    authenticationData: authentication_data
+    authenticationMethod: authentication_method
+    maxQos: 2
+    maximumPacketSize: 100
+    receiveMaximum: 100
+    responseInformation: response_information
+    retainAvailable: true
+    serverKeepAlive: 100
+    serverReference: server_reference
+    sessionExpired: 100m
+    sharedSubscriptionAvailable: true
+    subscriptionIdentifierAvailable: true
+    topicAliasMaximum: 100
+    wildcardSubscriptionAvailable: true
+  listen:
+    - tcp://localhost:1883
+  noSubTopicResponse: 0
+log:
+  level: debug
+retry:
+  interval: 5
+  maxTimes: 5
+  timeout: 30
+store:
+  default: local
+  messageExpired: 6000
+  local: { }
+  redis:
+    address: localhost:6379
+    connectTimeout: 1s
+    db: 0
+    idleTimeout: 60s
+    maxActive: 100
+    maxIdle: 10
+    password: ''
+    readTimeout: 1s
+    writeTimeout: 1s
+timeWheel:
+  interval: 1s
+  slowNum: 60
+server:
+  port: 9526

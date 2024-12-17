@@ -20,7 +20,8 @@ func (q *PublishChan) writeToPublishWithDrop(message *packet.Message) {
 	case q.ch <- message:
 
 	default:
-		logger.Logger.Warn("QoS2: ch is full, message will be dropped")
+		// TODO: add metric for dropped message
+		logger.Logger.Warn().Msg("QoS1: ch is full, message will be dropped")
 
 	}
 }

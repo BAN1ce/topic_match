@@ -2,35 +2,32 @@ package message_source
 
 import (
 	"context"
-	"fmt"
-	"github.com/BAN1ce/skyTree/inner/event"
 	"github.com/BAN1ce/skyTree/logger"
 	"github.com/BAN1ce/skyTree/pkg/broker"
 	"github.com/BAN1ce/skyTree/pkg/packet"
-	"go.uber.org/zap"
 )
 
 type StoreSource struct {
-	topic       string
-	messageChan chan *packet.Message
-	storeEvent  broker.MessageStoreEvent
-	store       broker.TopicMessageStore
+	topic            string
+	store            broker.TopicMessageStore
+	publishDoneEvent broker.HandlePublishDoneEvent
 }
 
-func NewStoreSource(topic string, store broker.TopicMessageStore, storeEvent broker.MessageStoreEvent) *StoreSource {
+func NewStoreSource(topic string, store broker.TopicMessageStore, publishDoneEvent broker.HandlePublishDoneEvent) *StoreSource {
 	return &StoreSource{
-		topic:       topic,
-		storeEvent:  storeEvent,
-		store:       store,
-		messageChan: make(chan *packet.Message, 10),
+		topic:            topic,
+		store:            store,
+		publishDoneEvent: publishDoneEvent,
 	}
 }
 
-func (s *StoreSource) NextMessages(ctx context.Context, n int, startMessageID string, include bool) ([]*packet.Message, error) {
-	var (
-		msg []*packet.Message
-		err error
-	)
+func (s *StoreSource) NextMessages(ctx context.Context, n int, startMessageID string, include bool, in chan *packet.Message) (msg []*packet.Message, err error) {
+	defer func() {
+		for i := 0; i < len(msg); i++ {
+			logger.Logger.Debug().Str("start message id", startMessageID).Str("store_message_id", msg[i].MessageID).Str("payload", string(msg[i].PublishPacket.Payload)).Msg("store source next messages")
+		}
+
+	}()
 
 	if startMessageID != "" {
 		if msg, err = s.readStoreWriteToWriter(ctx, s.topic, startMessageID, n, include); err != nil {
@@ -42,35 +39,52 @@ func (s *StoreSource) NextMessages(ctx context.Context, n int, startMessageID st
 	}
 
 	var (
-		ctx1, cancel = context.WithCancel(ctx)
-		ok           bool
-		eventData    *event.StoreEventData
-		f            = func(i ...interface{}) {
-			if len(i) != 1 {
-				logger.Logger.Error("readStoreWriteToWriter error", zap.Any("i", i))
+		//eventData    *event.StoreEventData
+		eventDataCh = make(chan string, 1)
+
+		qos0EventHandler = func(i ...interface{}) {
+			if len(i) != 2 {
+				logger.Logger.Error().Msg("readStoreWriteToWriter error invalid parameters")
 				return
 			}
-			eventData, ok = i[0].(*event.StoreEventData)
-			cancel()
-			return
+
+			if msg, ok := i[1].(*packet.Message); ok {
+				select {
+				case eventDataCh <- msg.MessageID:
+				default:
+
+				}
+			}
 		}
 	)
-	defer cancel()
 
-	logger.Logger.Debug("store source next message start listen store event", zap.String("topic", s.topic), zap.String("startMessageID", startMessageID))
-	s.storeEvent.CreateListenMessageStoreEvent(s.topic, f)
-	<-ctx1.Done()
-	logger.Logger.Debug("store source next message got from store event", zap.Any("message", msg), zap.Error(err))
-	s.storeEvent.DeleteListenMessageStoreEvent(s.topic, f)
+	//s.storeEvent.CreateListenMessageStoreEvent(s.topic, storeEventHandler)
+	s.publishDoneEvent.CreateListenPublishEventOnce(s.topic, qos0EventHandler)
 
-	if !ok || eventData == nil {
-		return nil, fmt.Errorf("store source next message got from store event error, eventData is nil or type error")
-	}
+	// defer delete listen event
+	defer func() {
+		//s.storeEvent.DeleteListenMessageStoreEvent(s.topic, storeEventHandler)
+		s.publishDoneEvent.DeleteListenPublishEvent(s.topic, qos0EventHandler)
+	}()
 
-	if startMessageID == "" {
-		msg, err = s.readStoreWriteToWriter(ctx, s.topic, eventData.MessageID, n, true)
-	} else {
-		msg, err = s.readStoreWriteToWriter(ctx, s.topic, startMessageID, n, false)
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case m := <-in:
+		return []*packet.Message{m}, nil
+	case messageID, ok := <-eventDataCh:
+		if !ok {
+			return nil, ctx.Err()
+		}
+		if messageID == "" {
+			return
+		}
+
+		if startMessageID == "" {
+			msg, err = s.readStoreWriteToWriter(ctx, s.topic, messageID, n, true)
+		} else {
+			msg, err = s.readStoreWriteToWriter(ctx, s.topic, startMessageID, n, include)
+		}
 	}
 
 	return msg, err
@@ -83,12 +97,6 @@ func (s *StoreSource) readStoreWriteToWriter(ctx context.Context, topic string, 
 	if err != nil {
 		return nil, err
 	}
-	logger.Logger.Debug("store help read publish message and write to channel",
-		zap.String("store", topic),
-		zap.String("id", id),
-		zap.Int("size", size),
-		zap.Bool("include", include),
-		zap.Int("got message size", len(message)))
 
 	return message, nil
 }

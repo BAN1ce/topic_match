@@ -11,9 +11,10 @@ type MessageSource interface {
 }
 
 type ReadMessageSource interface {
-	NextMessages(ctx context.Context, n int, startMessageID string, include bool) ([]*packet.Message, error)
+	NextMessages(ctx context.Context, n int, startMessageID string, include bool, in chan *packet.Message) ([]*packet.Message, error)
 }
 
 type StreamSource interface {
 	ListenMessage(ctx context.Context, writer chan *packet.Message) error
+	Close() error
 }

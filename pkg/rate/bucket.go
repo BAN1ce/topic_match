@@ -1,6 +1,9 @@
 package rate
 
-import "github.com/BAN1ce/skyTree/logger"
+import (
+	"context"
+	"github.com/BAN1ce/skyTree/logger"
+)
 
 type Bucket struct {
 	ch  chan struct{}
@@ -27,8 +30,14 @@ func NewBucket(num int) *Bucket {
 	return b
 }
 
-func (b *Bucket) GetToken() <-chan struct{} {
-	return b.ch
+func (b *Bucket) GetToken(ctx context.Context) {
+	select {
+	case <-ctx.Done():
+		logger.Logger.Debug().Msg("context done")
+	case <-b.ch:
+
+	}
+
 }
 
 // PutToken put a token into bucket, this operation is not concurrent safe
@@ -39,6 +48,6 @@ func (b *Bucket) PutToken() {
 	select {
 	case b.ch <- struct{}{}:
 	default:
-		logger.Logger.Error("put token into bucket failed, bucket is full, token will be dropped. It's abnormal, please check the code.")
+		logger.Logger.Error().Int("bucket count", len(b.ch)).Msg("put token into bucket failed, bucket is full, token will be dropped. It's abnormal, please check the code.")
 	}
 }

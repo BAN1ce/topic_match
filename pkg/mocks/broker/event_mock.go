@@ -7,54 +7,67 @@ package broker
 import (
 	reflect "reflect"
 
+	event "github.com/BAN1ce/skyTree/inner/event"
 	gomock "github.com/golang/mock/gomock"
 )
 
-// MockPublishListener is a mock of PublishListener interface.
-type MockPublishListener struct {
+// MockHandlePublishDoneEvent is a mock of HandlePublishDoneEvent interface.
+type MockHandlePublishDoneEvent struct {
 	ctrl     *gomock.Controller
-	recorder *MockPublishListenerMockRecorder
+	recorder *MockHandlePublishDoneEventMockRecorder
 }
 
-// MockPublishListenerMockRecorder is the mock recorder for MockPublishListener.
-type MockPublishListenerMockRecorder struct {
-	mock *MockPublishListener
+// MockHandlePublishDoneEventMockRecorder is the mock recorder for MockHandlePublishDoneEvent.
+type MockHandlePublishDoneEventMockRecorder struct {
+	mock *MockHandlePublishDoneEvent
 }
 
-// NewMockPublishListener creates a new mock instance.
-func NewMockPublishListener(ctrl *gomock.Controller) *MockPublishListener {
-	mock := &MockPublishListener{ctrl: ctrl}
-	mock.recorder = &MockPublishListenerMockRecorder{mock}
+// NewMockHandlePublishDoneEvent creates a new mock instance.
+func NewMockHandlePublishDoneEvent(ctrl *gomock.Controller) *MockHandlePublishDoneEvent {
+	mock := &MockHandlePublishDoneEvent{ctrl: ctrl}
+	mock.recorder = &MockHandlePublishDoneEventMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockPublishListener) EXPECT() *MockPublishListenerMockRecorder {
+func (m *MockHandlePublishDoneEvent) EXPECT() *MockHandlePublishDoneEventMockRecorder {
 	return m.recorder
 }
 
-// CreatePublishEvent mocks base method.
-func (m *MockPublishListener) CreateListenPublishEvent(topic string, handler func(...interface{})) {
+// CreateListenPublishEvent mocks base method.
+func (m *MockHandlePublishDoneEvent) CreateListenPublishEvent(topic string, handler func(...interface{})) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "CreateListenPublishEvent", topic, handler)
 }
 
-// CreatePublishEvent indicates an expected call of CreatePublishEvent.
-func (mr *MockPublishListenerMockRecorder) CreatePublishEvent(topic, handler interface{}) *gomock.Call {
+// CreateListenPublishEvent indicates an expected call of CreateListenPublishEvent.
+func (mr *MockHandlePublishDoneEventMockRecorder) CreateListenPublishEvent(topic, handler interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateListenPublishEvent", reflect.TypeOf((*MockPublishListener)(nil).CreateListenPublishEvent), topic, handler)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateListenPublishEvent", reflect.TypeOf((*MockHandlePublishDoneEvent)(nil).CreateListenPublishEvent), topic, handler)
 }
 
-// DeletePublishEvent mocks base method.
-func (m *MockPublishListener) DeletePublishEvent(topic string, handler func(...interface{})) {
+// CreateListenPublishEventOnce mocks base method.
+func (m *MockHandlePublishDoneEvent) CreateListenPublishEventOnce(topic string, handler func(...interface{})) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "DeletePublishEvent", topic, handler)
+	m.ctrl.Call(m, "CreateListenPublishEventOnce", topic, handler)
 }
 
-// DeletePublishEvent indicates an expected call of DeletePublishEvent.
-func (mr *MockPublishListenerMockRecorder) DeletePublishEvent(topic, handler interface{}) *gomock.Call {
+// CreateListenPublishEventOnce indicates an expected call of CreateListenPublishEventOnce.
+func (mr *MockHandlePublishDoneEventMockRecorder) CreateListenPublishEventOnce(topic, handler interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePublishEvent", reflect.TypeOf((*MockPublishListener)(nil).DeletePublishEvent), topic, handler)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateListenPublishEventOnce", reflect.TypeOf((*MockHandlePublishDoneEvent)(nil).CreateListenPublishEventOnce), topic, handler)
+}
+
+// DeleteListenPublishEvent mocks base method.
+func (m *MockHandlePublishDoneEvent) DeleteListenPublishEvent(topic string, handler func(...interface{})) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "DeleteListenPublishEvent", topic, handler)
+}
+
+// DeleteListenPublishEvent indicates an expected call of DeleteListenPublishEvent.
+func (mr *MockHandlePublishDoneEventMockRecorder) DeleteListenPublishEvent(topic, handler interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteListenPublishEvent", reflect.TypeOf((*MockHandlePublishDoneEvent)(nil).DeleteListenPublishEvent), topic, handler)
 }
 
 // MockMessageStoreEvent is a mock of MessageStoreEvent interface.
@@ -92,6 +105,18 @@ func (mr *MockMessageStoreEventMockRecorder) CreateListenMessageStoreEvent(topic
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateListenMessageStoreEvent", reflect.TypeOf((*MockMessageStoreEvent)(nil).CreateListenMessageStoreEvent), topic, handler)
 }
 
+// CreateOnceListenMessageStoreEvent mocks base method.
+func (m *MockMessageStoreEvent) CreateOnceListenMessageStoreEvent(topic string, handler func(...interface{})) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "CreateOnceListenMessageStoreEvent", topic, handler)
+}
+
+// CreateOnceListenMessageStoreEvent indicates an expected call of CreateOnceListenMessageStoreEvent.
+func (mr *MockMessageStoreEventMockRecorder) CreateOnceListenMessageStoreEvent(topic, handler interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateOnceListenMessageStoreEvent", reflect.TypeOf((*MockMessageStoreEvent)(nil).CreateOnceListenMessageStoreEvent), topic, handler)
+}
+
 // DeleteListenMessageStoreEvent mocks base method.
 func (m *MockMessageStoreEvent) DeleteListenMessageStoreEvent(topic string, handler func(...interface{})) {
 	m.ctrl.T.Helper()
@@ -102,4 +127,40 @@ func (m *MockMessageStoreEvent) DeleteListenMessageStoreEvent(topic string, hand
 func (mr *MockMessageStoreEventMockRecorder) DeleteListenMessageStoreEvent(topic, handler interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteListenMessageStoreEvent", reflect.TypeOf((*MockMessageStoreEvent)(nil).DeleteListenMessageStoreEvent), topic, handler)
+}
+
+// EmitDelete mocks base method.
+func (m *MockMessageStoreEvent) EmitDelete(e *event.StoreEventData) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "EmitDelete", e)
+}
+
+// EmitDelete indicates an expected call of EmitDelete.
+func (mr *MockMessageStoreEventMockRecorder) EmitDelete(e interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EmitDelete", reflect.TypeOf((*MockMessageStoreEvent)(nil).EmitDelete), e)
+}
+
+// EmitRead mocks base method.
+func (m *MockMessageStoreEvent) EmitRead(e *event.StoreEventData) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "EmitRead", e)
+}
+
+// EmitRead indicates an expected call of EmitRead.
+func (mr *MockMessageStoreEventMockRecorder) EmitRead(e interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EmitRead", reflect.TypeOf((*MockMessageStoreEvent)(nil).EmitRead), e)
+}
+
+// EmitStored mocks base method.
+func (m *MockMessageStoreEvent) EmitStored(arg0 *event.StoreEventData) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "EmitStored", arg0)
+}
+
+// EmitStored indicates an expected call of EmitStored.
+func (mr *MockMessageStoreEventMockRecorder) EmitStored(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EmitStored", reflect.TypeOf((*MockMessageStoreEvent)(nil).EmitStored), arg0)
 }

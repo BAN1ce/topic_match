@@ -13,7 +13,6 @@ import (
 	"github.com/BAN1ce/skyTree/pkg/utils"
 	"github.com/eclipse/paho.golang/packets"
 	"github.com/google/uuid"
-	"go.uber.org/zap"
 	"time"
 )
 
@@ -25,13 +24,11 @@ func NewConnectHandler() *ConnectHandler {
 }
 
 func (c *ConnectHandler) Handle(broker *Broker, client *client2.Client, rawPacket *packets.ControlPacket) error {
-	var (
-		err error
-	)
+	var err error
 
 	defer func() {
 		// emit client connect result event
-		event.ClientEvent.EmitClientConnectResult(client.GetUid(), err == nil)
+		event.ClientEvent.EmitClientConnectResult(client.GetID(), err)
 	}()
 
 	// check received connect packet
@@ -46,20 +43,28 @@ func (c *ConnectHandler) Handle(broker *Broker, client *client2.Client, rawPacke
 	)
 
 	if err = c.handleUsernamePassword(broker, client, connectPacket, conAck); err != nil {
-		_ = client.WritePacket(client3.NewWritePacket(conAck))
+		_ = client.Write(client3.NewWritePacket(conAck))
 		return err
 	}
+	client.ID = connectPacket.ClientID
+
+	if client.ID == "" {
+		client.ID = uuid.New().String()
+	}
+
+	client.Username = connectPacket.Username
 
 	// handle clean start flag
 	if err = c.handleCleanStart(broker, client, *connectPacket, conAck); err != nil {
-		_ = client.WritePacket(client3.NewWritePacket(conAck))
+		_ = client.Write(client3.NewWritePacket(conAck))
 		return err
 	}
 	broker.CreateClient(client)
 
-	err = broker.clientKeepAliveMonitor.SetClientAliveTime(client.UID, utils.NextAliveTime(int64(connectPacket.KeepAlive)))
+	err = broker.clientKeepAliveMonitor.SetClientAliveTime(client.GetID(), utils.NextAliveTime(int64(connectPacket.KeepAlive)))
+
 	if err != nil {
-		logger.Logger.Error("set client alive time error", zap.Error(err))
+		logger.Logger.Error().Err(err).Msg("set client alive time error")
 	}
 
 	return err
@@ -104,7 +109,6 @@ func (c *ConnectHandler) handleCleanStart(broker *Broker, client *client2.Client
 		broker.ReleaseSession(clientID)
 		session = broker.sessionManager.NewClientSession(context.TODO(), clientID)
 		broker.sessionManager.AddClientSession(context.TODO(), clientID, session)
-		logger.Logger.Debug("create new session", zap.String("clientID", clientID))
 	} else {
 		session, exists = broker.sessionManager.ReadClientSession(context.TODO(), clientID)
 		if exists {
@@ -118,6 +122,7 @@ func (c *ConnectHandler) handleCleanStart(broker *Broker, client *client2.Client
 			willCreate = true
 		}
 	}
+
 	if willCreate {
 		// create new session
 		session = broker.sessionManager.NewClientSession(context.TODO(), clientID)

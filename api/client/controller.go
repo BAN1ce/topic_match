@@ -39,7 +39,6 @@ func (c *Controller) Info(g *gin.Context) {
 	}
 	rspData.Session = c.sessionToRsp(client.GetSession())
 	rspData.ID = client.ID
-	rspData.UID = client.UID
 	rspData.Meta = client.Meta()
 	g.JSON(200, base.WithData(rspData))
 }

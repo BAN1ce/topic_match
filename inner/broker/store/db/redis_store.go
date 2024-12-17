@@ -3,13 +3,20 @@ package db
 import (
 	"context"
 	"fmt"
+	"github.com/BAN1ce/skyTree/pkg/packet"
 	"github.com/redis/go-redis/v9"
+	"time"
 )
 
 // TODO: implement
 
 type Redis struct {
 	db *redis.Client
+}
+
+func (r *Redis) ZRangeByScore(ctx context.Context, key string, start, end float64) ([]string, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 func NewRedis() *Redis {
@@ -115,4 +122,53 @@ func (r *Redis) ZRange(ctx context.Context, key string, start, end float64) ([]s
 		Min: fmt.Sprintf("%f", start),
 		Max: fmt.Sprintf("%f", end),
 	}).Result()
+}
+
+func (r *Redis) ReadFromTimestamp(ctx context.Context, topic string, timestamp time.Time, limit int) ([]*packet.Message, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *Redis) ReadTopicMessagesByID(ctx context.Context, topic, id string, limit int, include bool) ([]*packet.Message, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *Redis) CreatePacket(topic string, value []byte) (id string, err error) {
+	panic("implement me")
+}
+
+func (r *Redis) DeleteTopicMessageID(ctx context.Context, topic, messageID string) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *Redis) getTopicQueueKey(topic string) string {
+	return "topic_queue:" + topic
+
+}
+
+func (r *Redis) DeleteBeforeTime(ctx context.Context, topic string, time time.Time, limit int) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *Redis) Topics(start, limit int) []string {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *Redis) TopicMessageTotal(ctx context.Context, topic string) (int, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *Redis) ReadTopicMessage(ctx context.Context, topic string, start, limit int) ([]*packet.Message, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *Redis) Close() error {
+	return nil
+
 }

@@ -1,21 +1,22 @@
 package client
 
 import (
+	"github.com/BAN1ce/skyTree/inner/metric"
 	"github.com/BAN1ce/skyTree/logger"
-	"go.uber.org/zap"
+	"github.com/BAN1ce/skyTree/pkg/retry"
 	"sync"
 )
 
-type UID = string
+type ID = string
 
 type Clients struct {
 	mux     sync.RWMutex
-	clients map[UID]*Client
+	clients map[ID]*Client
 }
 
 func NewClients() *Clients {
 	return &Clients{
-		clients: map[string]*Client{},
+		clients: map[ID]*Client{},
 	}
 }
 
@@ -31,34 +32,34 @@ func (c *Clients) CreateClient(client *Client) (*Client, bool) {
 	return c.createClient(client)
 }
 
-func (c *Clients) DestroyClient(uid string) (*Client, bool) {
+func (c *Clients) DestroyClient(id ID) (*Client, bool) {
 	c.mux.Lock()
 	defer c.mux.Unlock()
 
-	if client2, ok := c.clients[uid]; ok {
-		logger.Logger.Debug("delete client", zap.String("uid", uid))
-		delete(c.clients, uid)
+	if client2, ok := c.clients[id]; ok {
+		logger.Logger.Debug().Str("id", id).Msg("delete client")
+		delete(c.clients, id)
 		if err := client2.Close(); err != nil {
-			logger.Logger.Warn("close client error", zap.Error(err))
+			logger.Logger.Warn().Err(err).Str("id", id).Msg("close client error")
 		}
 		return client2, ok
 	}
 
-	logger.Logger.Warn("delete client not found", zap.String("uid", uid))
+	logger.Logger.Warn().Str("id", id).Msg("delete client not found")
 	return nil, false
 }
 
 func (c *Clients) createClient(client *Client) (*Client, bool) {
-	if oldClient, ok := c.clients[client.GetUid()]; ok {
+	if oldClient, ok := c.clients[client.GetID()]; ok {
 		if oldClient != client {
-			logger.Logger.Warn("client already exist", zap.String("client uid", client.UID))
+			logger.Logger.Warn().Str("client uid", client.GetID()).Msg("client already exist")
 			if err := oldClient.Close(); err != nil {
-				logger.Logger.Warn("close old client error", zap.Error(err), zap.String("uid", client.UID))
+				logger.Logger.Warn().Err(err).Str("uid", client.GetID()).Msg("close old client error")
 			}
 			return oldClient, false
 		}
 	}
-	c.clients[client.GetUid()] = client
+	c.clients[client.GetID()] = client
 	return client, true
 }
 
@@ -76,4 +77,22 @@ func (c *Clients) Count() int64 {
 	c.mux.RUnlock()
 
 	return tmp
+}
+
+func (c *Clients) RetryPublish(task *retry.Task) error {
+	if cl, ok := c.ReadClient(task.Data.SendClientID); ok {
+		return cl.RetrySend(task.Data)
+	}
+	return nil
+
+}
+
+func (c *Clients) RetryPublishTimeout(task *retry.Task) error {
+	metric.PublishRetryTimeout.Inc()
+	metric.PublishRetryTaskCurrent.Add(-1)
+
+	logger.Logger.Debug().Str("clientID", task.ClientID).Msg("retry publish timeout, close client")
+	c.DestroyClient(task.ClientID)
+	return nil
+
 }

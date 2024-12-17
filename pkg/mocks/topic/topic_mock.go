@@ -66,10 +66,10 @@ func (mr *MockTopicMockRecorder) GetUnFinishedMessage() *gomock.Call {
 }
 
 // Meta mocks base method.
-func (m *MockTopic) Meta() topic.Meta {
+func (m *MockTopic) Meta() *topic.Meta {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Meta")
-	ret0, _ := ret[0].(topic.Meta)
+	ret0, _ := ret[0].(*topic.Meta)
 	return ret0
 }
 
@@ -80,17 +80,17 @@ func (mr *MockTopicMockRecorder) Meta() *gomock.Call {
 }
 
 // Publish mocks base method.
-func (m *MockTopic) Publish(publish *packet.Message) error {
+func (m *MockTopic) Publish(publish *packet.Message, extra *packet.MessageExtraInfo) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Publish", publish)
+	ret := m.ctrl.Call(m, "Publish", publish, extra)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Publish indicates an expected call of Publish.
-func (mr *MockTopicMockRecorder) Publish(publish interface{}) *gomock.Call {
+func (mr *MockTopicMockRecorder) Publish(publish, extra interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockTopic)(nil).Publish), publish)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockTopic)(nil).Publish), publish, extra)
 }
 
 // Start mocks base method.
@@ -159,10 +159,10 @@ func (mr *MockQoS0SubscriberMockRecorder) GetUnFinishedMessage() *gomock.Call {
 }
 
 // Meta mocks base method.
-func (m *MockQoS0Subscriber) Meta() topic.Meta {
+func (m *MockQoS0Subscriber) Meta() *topic.Meta {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Meta")
-	ret0, _ := ret[0].(topic.Meta)
+	ret0, _ := ret[0].(*topic.Meta)
 	return ret0
 }
 
@@ -173,17 +173,17 @@ func (mr *MockQoS0SubscriberMockRecorder) Meta() *gomock.Call {
 }
 
 // Publish mocks base method.
-func (m *MockQoS0Subscriber) Publish(publish *packet.Message) error {
+func (m *MockQoS0Subscriber) Publish(publish *packet.Message, extra *packet.MessageExtraInfo) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Publish", publish)
+	ret := m.ctrl.Call(m, "Publish", publish, extra)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Publish indicates an expected call of Publish.
-func (mr *MockQoS0SubscriberMockRecorder) Publish(publish interface{}) *gomock.Call {
+func (mr *MockQoS0SubscriberMockRecorder) Publish(publish, extra interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockQoS0Subscriber)(nil).Publish), publish)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockQoS0Subscriber)(nil).Publish), publish, extra)
 }
 
 // Start mocks base method.
@@ -252,12 +252,11 @@ func (mr *MockQoS1SubscriberMockRecorder) GetUnFinishedMessage() *gomock.Call {
 }
 
 // HandlePublishAck mocks base method.
-func (m *MockQoS1Subscriber) HandlePublishAck(puback *packets.Puback) (bool, error) {
+func (m *MockQoS1Subscriber) HandlePublishAck(puback *packets.Puback) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HandlePublishAck", puback)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // HandlePublishAck indicates an expected call of HandlePublishAck.
@@ -267,10 +266,10 @@ func (mr *MockQoS1SubscriberMockRecorder) HandlePublishAck(puback interface{}) *
 }
 
 // Meta mocks base method.
-func (m *MockQoS1Subscriber) Meta() topic.Meta {
+func (m *MockQoS1Subscriber) Meta() *topic.Meta {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Meta")
-	ret0, _ := ret[0].(topic.Meta)
+	ret0, _ := ret[0].(*topic.Meta)
 	return ret0
 }
 
@@ -281,17 +280,17 @@ func (mr *MockQoS1SubscriberMockRecorder) Meta() *gomock.Call {
 }
 
 // Publish mocks base method.
-func (m *MockQoS1Subscriber) Publish(publish *packet.Message) error {
+func (m *MockQoS1Subscriber) Publish(publish *packet.Message, extra *packet.MessageExtraInfo) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Publish", publish)
+	ret := m.ctrl.Call(m, "Publish", publish, extra)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Publish indicates an expected call of Publish.
-func (mr *MockQoS1SubscriberMockRecorder) Publish(publish interface{}) *gomock.Call {
+func (mr *MockQoS1SubscriberMockRecorder) Publish(publish, extra interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockQoS1Subscriber)(nil).Publish), publish)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockQoS1Subscriber)(nil).Publish), publish, extra)
 }
 
 // Start mocks base method.
@@ -360,12 +359,11 @@ func (mr *MockQoS2SubscriberMockRecorder) GetUnFinishedMessage() *gomock.Call {
 }
 
 // HandlePublishComp mocks base method.
-func (m *MockQoS2Subscriber) HandlePublishComp(pubcomp *packets.Pubcomp) (bool, error) {
+func (m *MockQoS2Subscriber) HandlePublishComp(pubcomp *packets.Pubcomp) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HandlePublishComp", pubcomp)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // HandlePublishComp indicates an expected call of HandlePublishComp.
@@ -375,12 +373,11 @@ func (mr *MockQoS2SubscriberMockRecorder) HandlePublishComp(pubcomp interface{})
 }
 
 // HandlePublishRec mocks base method.
-func (m *MockQoS2Subscriber) HandlePublishRec(pubrec *packets.Pubrec) (bool, error) {
+func (m *MockQoS2Subscriber) HandlePublishRec(pubrec *packets.Pubrec) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HandlePublishRec", pubrec)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // HandlePublishRec indicates an expected call of HandlePublishRec.
@@ -390,10 +387,10 @@ func (mr *MockQoS2SubscriberMockRecorder) HandlePublishRec(pubrec interface{}) *
 }
 
 // Meta mocks base method.
-func (m *MockQoS2Subscriber) Meta() topic.Meta {
+func (m *MockQoS2Subscriber) Meta() *topic.Meta {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Meta")
-	ret0, _ := ret[0].(topic.Meta)
+	ret0, _ := ret[0].(*topic.Meta)
 	return ret0
 }
 
@@ -404,17 +401,17 @@ func (mr *MockQoS2SubscriberMockRecorder) Meta() *gomock.Call {
 }
 
 // Publish mocks base method.
-func (m *MockQoS2Subscriber) Publish(publish *packet.Message) error {
+func (m *MockQoS2Subscriber) Publish(publish *packet.Message, extra *packet.MessageExtraInfo) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Publish", publish)
+	ret := m.ctrl.Call(m, "Publish", publish, extra)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // Publish indicates an expected call of Publish.
-func (mr *MockQoS2SubscriberMockRecorder) Publish(publish interface{}) *gomock.Call {
+func (mr *MockQoS2SubscriberMockRecorder) Publish(publish, extra interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockQoS2Subscriber)(nil).Publish), publish)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Publish", reflect.TypeOf((*MockQoS2Subscriber)(nil).Publish), publish, extra)
 }
 
 // Start mocks base method.

@@ -4,8 +4,9 @@ current_dir="$(pwd)"
 
 echo "current_dir: $current_dir"
 
-rm -rf "$current_dir/../data"
+#rm -rf "$current_dir/../data"
 
-echo "data directory removed"
 
-go run -race "$current_dir/../cmd/main.go"
+#echo "data directory removed"
+
+go run  "$current_dir/../cmd/main.go" -config=./../config/config.yaml

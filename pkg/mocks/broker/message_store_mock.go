@@ -131,6 +131,20 @@ func (mr *MockMessageStoreMockRecorder) CreatePacket(topic, value interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePacket", reflect.TypeOf((*MockMessageStore)(nil).CreatePacket), topic, value)
 }
 
+// DeleteBeforeTime mocks base method.
+func (m *MockMessageStore) DeleteBeforeTime(ctx context.Context, topic string, time time.Time, limit int) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteBeforeTime", ctx, topic, time, limit)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteBeforeTime indicates an expected call of DeleteBeforeTime.
+func (mr *MockMessageStoreMockRecorder) DeleteBeforeTime(ctx, topic, time, limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteBeforeTime", reflect.TypeOf((*MockMessageStore)(nil).DeleteBeforeTime), ctx, topic, time, limit)
+}
+
 // DeleteTopicMessageID mocks base method.
 func (m *MockMessageStore) DeleteTopicMessageID(ctx context.Context, topic, messageID string) error {
 	m.ctrl.T.Helper()
@@ -160,6 +174,21 @@ func (mr *MockMessageStoreMockRecorder) ReadFromTimestamp(ctx, topic, timestamp,
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadFromTimestamp", reflect.TypeOf((*MockMessageStore)(nil).ReadFromTimestamp), ctx, topic, timestamp, limit)
 }
 
+// ReadTopicMessage mocks base method.
+func (m *MockMessageStore) ReadTopicMessage(ctx context.Context, topic string, start, limit int) ([]*packet.Message, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadTopicMessage", ctx, topic, start, limit)
+	ret0, _ := ret[0].([]*packet.Message)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ReadTopicMessage indicates an expected call of ReadTopicMessage.
+func (mr *MockMessageStoreMockRecorder) ReadTopicMessage(ctx, topic, start, limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadTopicMessage", reflect.TypeOf((*MockMessageStore)(nil).ReadTopicMessage), ctx, topic, start, limit)
+}
+
 // ReadTopicMessagesByID mocks base method.
 func (m *MockMessageStore) ReadTopicMessagesByID(ctx context.Context, topic, id string, limit int, include bool) ([]*packet.Message, error) {
 	m.ctrl.T.Helper()
@@ -173,6 +202,35 @@ func (m *MockMessageStore) ReadTopicMessagesByID(ctx context.Context, topic, id 
 func (mr *MockMessageStoreMockRecorder) ReadTopicMessagesByID(ctx, topic, id, limit, include interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadTopicMessagesByID", reflect.TypeOf((*MockMessageStore)(nil).ReadTopicMessagesByID), ctx, topic, id, limit, include)
+}
+
+// TopicMessageTotal mocks base method.
+func (m *MockMessageStore) TopicMessageTotal(ctx context.Context, topic string) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TopicMessageTotal", ctx, topic)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TopicMessageTotal indicates an expected call of TopicMessageTotal.
+func (mr *MockMessageStoreMockRecorder) TopicMessageTotal(ctx, topic interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TopicMessageTotal", reflect.TypeOf((*MockMessageStore)(nil).TopicMessageTotal), ctx, topic)
+}
+
+// Topics mocks base method.
+func (m *MockMessageStore) Topics(start, limit int) []string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Topics", start, limit)
+	ret0, _ := ret[0].([]string)
+	return ret0
+}
+
+// Topics indicates an expected call of Topics.
+func (mr *MockMessageStoreMockRecorder) Topics(start, limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Topics", reflect.TypeOf((*MockMessageStore)(nil).Topics), start, limit)
 }
 
 // MockTopicStoreInfo is a mock of TopicStoreInfo interface.
@@ -265,6 +323,20 @@ func (mr *MockTopicMessageStoreMockRecorder) CreatePacket(topic, value interface
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePacket", reflect.TypeOf((*MockTopicMessageStore)(nil).CreatePacket), topic, value)
 }
 
+// DeleteBeforeTime mocks base method.
+func (m *MockTopicMessageStore) DeleteBeforeTime(ctx context.Context, topic string, time time.Time, limit int) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteBeforeTime", ctx, topic, time, limit)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteBeforeTime indicates an expected call of DeleteBeforeTime.
+func (mr *MockTopicMessageStoreMockRecorder) DeleteBeforeTime(ctx, topic, time, limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteBeforeTime", reflect.TypeOf((*MockTopicMessageStore)(nil).DeleteBeforeTime), ctx, topic, time, limit)
+}
+
 // DeleteTopicMessageID mocks base method.
 func (m *MockTopicMessageStore) DeleteTopicMessageID(ctx context.Context, topic, messageID string) error {
 	m.ctrl.T.Helper()
@@ -294,6 +366,21 @@ func (mr *MockTopicMessageStoreMockRecorder) ReadFromTimestamp(ctx, topic, times
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadFromTimestamp", reflect.TypeOf((*MockTopicMessageStore)(nil).ReadFromTimestamp), ctx, topic, timestamp, limit)
 }
 
+// ReadTopicMessage mocks base method.
+func (m *MockTopicMessageStore) ReadTopicMessage(ctx context.Context, topic string, start, limit int) ([]*packet.Message, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ReadTopicMessage", ctx, topic, start, limit)
+	ret0, _ := ret[0].([]*packet.Message)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ReadTopicMessage indicates an expected call of ReadTopicMessage.
+func (mr *MockTopicMessageStoreMockRecorder) ReadTopicMessage(ctx, topic, start, limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadTopicMessage", reflect.TypeOf((*MockTopicMessageStore)(nil).ReadTopicMessage), ctx, topic, start, limit)
+}
+
 // ReadTopicMessagesByID mocks base method.
 func (m *MockTopicMessageStore) ReadTopicMessagesByID(ctx context.Context, topic, id string, limit int, include bool) ([]*packet.Message, error) {
 	m.ctrl.T.Helper()
@@ -307,6 +394,35 @@ func (m *MockTopicMessageStore) ReadTopicMessagesByID(ctx context.Context, topic
 func (mr *MockTopicMessageStoreMockRecorder) ReadTopicMessagesByID(ctx, topic, id, limit, include interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReadTopicMessagesByID", reflect.TypeOf((*MockTopicMessageStore)(nil).ReadTopicMessagesByID), ctx, topic, id, limit, include)
+}
+
+// TopicMessageTotal mocks base method.
+func (m *MockTopicMessageStore) TopicMessageTotal(ctx context.Context, topic string) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "TopicMessageTotal", ctx, topic)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// TopicMessageTotal indicates an expected call of TopicMessageTotal.
+func (mr *MockTopicMessageStoreMockRecorder) TopicMessageTotal(ctx, topic interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "TopicMessageTotal", reflect.TypeOf((*MockTopicMessageStore)(nil).TopicMessageTotal), ctx, topic)
+}
+
+// Topics mocks base method.
+func (m *MockTopicMessageStore) Topics(start, limit int) []string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Topics", start, limit)
+	ret0, _ := ret[0].([]string)
+	return ret0
+}
+
+// Topics indicates an expected call of Topics.
+func (mr *MockTopicMessageStoreMockRecorder) Topics(start, limit interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Topics", reflect.TypeOf((*MockTopicMessageStore)(nil).Topics), start, limit)
 }
 
 // MockStoreSerializer is a mock of StoreSerializer interface.

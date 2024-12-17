@@ -4,7 +4,6 @@ import (
 	"github.com/BAN1ce/skyTree/inner/metric"
 	"github.com/BAN1ce/skyTree/logger"
 	"github.com/BAN1ce/skyTree/pkg/utils"
-	"go.uber.org/zap"
 )
 
 const (
@@ -12,7 +11,7 @@ const (
 
 	MessageRead = "event.store.read"
 
-	MessageDelete = "event.store.delete"
+	MessageDelete = "event.store.deleted"
 )
 
 var (
@@ -45,6 +44,10 @@ func (s *Store) CreateListenMessageStoreEvent(topic string, handler func(...inte
 	eventDriver.AddListener(topicMessageStoredEventName(topic), handler)
 }
 
+func (s *Store) CreateOnceListenMessageStoreEvent(topic string, handler func(...interface{})) {
+	eventDriver.AddListenerOnce(topicMessageStoredEventName(topic), handler)
+}
+
 func (s *Store) DeleteListenMessageStoreEvent(topic string, handler func(i ...interface{})) {
 	eventDriver.RemoveListener(topicMessageStoredEventName(topic), handler)
 }
@@ -52,7 +55,7 @@ func (s *Store) DeleteListenMessageStoreEvent(topic string, handler func(i ...in
 func (s *Store) addDefaultListener() {
 	eventDriver.AddListener(MessageRead, func(i ...interface{}) {
 		if len(i) != 1 {
-			logger.Logger.Error("readStoreWriteToWriter error", zap.Any("i", i))
+			logger.Logger.Error().Msg("readStoreWriteToWriter error")
 			return
 		}
 		data, ok := i[0].(*StoreEventData)
@@ -74,7 +77,7 @@ func (s *Store) addDefaultListener() {
 	eventDriver.AddListener(MessageStored, func(i ...interface{}) {
 
 		if len(i) != 1 {
-			logger.Logger.Error("readStoreWriteToWriter error", zap.Any("i", i))
+			logger.Logger.Error().Msg("readStoreWriteToWriter error")
 			return
 		}
 		data, ok := i[0].(*StoreEventData)
@@ -92,7 +95,7 @@ func (s *Store) addDefaultListener() {
 
 	eventDriver.AddListener(MessageDelete, func(i ...interface{}) {
 		if len(i) != 1 {
-			logger.Logger.Error("readStoreWriteToWriter error", zap.Any("i", i))
+			logger.Logger.Error().Msg("readStoreWriteToWriter error")
 			return
 		}
 		data, ok := i[0].(*StoreEventData)

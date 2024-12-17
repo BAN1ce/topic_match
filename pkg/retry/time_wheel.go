@@ -8,6 +8,10 @@ import (
 	"time"
 )
 
+/**
+Design from https://github.com/ouqiang/timewheel/blob/master/timewheel.go
+*/
+
 type callbackHandler func(key string, data interface{})
 
 type op int
@@ -93,21 +97,25 @@ func (t *TimeWheel) doSlot() {
 		t.currentPos.Store(0)
 	} else {
 		t.currentPos.Add(1)
+		//t.currentPos.MessageStore(t.currentPos.Load() + 1)
 	}
 }
 
 func (t *TimeWheel) scanAndRunTask(l *list.List) {
-	for e := l.Front(); e != nil; e = e.Next() {
+	for e := l.Front(); e != nil; {
 		task := e.Value.(*DelayTask)
 		if task.circle.Load() > 0 {
 			task.circle.Add(-1)
+			e = e.Next()
 			continue
 		}
 		go t.callback(task.key, task.data)
+		next := e.Next()
 		l.Remove(e)
 		if task.key != "" {
 			delete(t.taskSlot, task.key)
 		}
+		e = next
 	}
 }
 

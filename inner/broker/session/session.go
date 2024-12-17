@@ -10,7 +10,6 @@ import (
 	"github.com/BAN1ce/skyTree/pkg/broker/topic"
 	"github.com/BAN1ce/skyTree/pkg/errs"
 	"github.com/BAN1ce/skyTree/pkg/packet"
-	"go.uber.org/zap"
 	"time"
 )
 
@@ -20,7 +19,6 @@ type Session struct {
 }
 
 func newSession(ctx context.Context, clientID string, keyStore store.KeyStore) *Session {
-	logger.Logger.Debug("new session", zap.String("clientID", clientID))
 	s := &Session{
 		clientID: clientID,
 		store: store.NewKeyValueStoreWithTimout(
@@ -28,7 +26,7 @@ func newSession(ctx context.Context, clientID string, keyStore store.KeyStore) *
 			3*time.Second),
 	}
 	if err := s.store.PutKey(ctx, clientSessionCreatedTimeKey(s.clientID), time.Now().String()); err != nil {
-		logger.Logger.Error("put key failed", zap.Error(err), zap.String("clientID", s.clientID))
+		logger.Logger.Error().Err(err).Str("clientID", s.clientID).Msg("put key failed")
 	}
 	return s
 }
@@ -36,31 +34,31 @@ func newSession(ctx context.Context, clientID string, keyStore store.KeyStore) *
 func (s *Session) Release() {
 	// delete session prefix key  like session/client/xxx
 	if err := s.store.DefaultDeleteKey(clientSessionPrefix(s.clientID)); err != nil {
-		logger.Logger.Error("release session failed", zap.Error(err), zap.String("clientID", s.clientID))
+		logger.Logger.Error().Err(err).Str("clientID", s.clientID).Msg("release session failed")
 	}
 }
 
 // ----------------------------------------------------------------- Sub topic ----------------------------------------------------------------- //
 
 // ReadSubTopics returns all sub topics of the client.
-func (s *Session) ReadSubTopics() (topics []topic.Meta) {
+func (s *Session) ReadSubTopics() (topics []*topic.Meta) {
 	m, err := s.store.DefaultReadPrefixKey(context.TODO(), clientSubTopicKeyPrefix(s.clientID))
 	if err != nil && !errors.Is(err, errs.ErrStoreKeyNotFound) {
-		logger.Logger.Error("read sub topics failed", zap.Error(err), zap.String("clientID", s.clientID))
+		logger.Logger.Error().Err(err).Str("clientID", s.clientID).Msg("read sub topics failed")
 		return nil
 	}
 	if len(m) == 0 {
-		logger.Logger.Debug("no sub topics", zap.String("clientID", s.clientID))
+		logger.Logger.Debug().Str("clientID", s.clientID).Msg("no sub topics")
 	}
 	for _, v := range m {
 		var meta *topic.Meta
 		// QoS should not greater than 2, so int is enough
 		if err := json.Unmarshal([]byte(v), &meta); err != nil {
-			logger.Logger.Error("unmarshal sub option failed", zap.Error(err), zap.String("clientID", s.clientID))
+			logger.Logger.Error().Err(err).Str("clientID", s.clientID).Msg("unmarshal sub option failed")
 			continue
 		}
 
-		topics = append(topics, *meta)
+		topics = append(topics, meta)
 	}
 	return
 }
@@ -71,13 +69,12 @@ func (s *Session) CreateSubTopic(meta *topic.Meta) {
 		topicName = meta.Topic
 	)
 	if topicName == "" {
-		logger.Logger.Error("topicName should not be empty", zap.String("clientID", s.clientID))
+		logger.Logger.Error().Str("clientID", s.clientID).Msg("topicName should not be empty")
 		return
 	}
 	data, _ := json.Marshal(meta)
 	if err := s.store.DefaultPutKey(clientSubTopicKey(s.clientID, topicName), string(data)); err != nil {
-		logger.Logger.Error("create sub topicName failed", zap.Error(err), zap.String("clientID", s.clientID),
-			zap.String("topicName", topicName), zap.Int32("qos", meta.QoS))
+		logger.Logger.Error().Err(err).Str("clientID", s.clientID).Str("topicName", topicName).Int32("qos", meta.QoS).Msg("create sub topic failed")
 	}
 }
 
@@ -87,8 +84,7 @@ func (s *Session) DeleteSubTopic(topic string) {
 		return
 	}
 	if err := s.store.DefaultDeleteKey(clientSubTopicKey(s.clientID, topic)); err != nil {
-		logger.Logger.Error("delete sub topic failed", zap.Error(err), zap.String("clientID", s.clientID),
-			zap.String("topic", topic))
+		logger.Logger.Error().Err(err).Str("clientID", s.clientID).Str("topic", topic).Msg("delete sub topic failed")
 	}
 }
 
@@ -97,7 +93,7 @@ func (s *Session) DeleteSubTopic(topic string) {
 func (s *Session) ReadTopicLatestPushedMessageID(topic string) (messageID string, ok bool) {
 	id, _, err := s.store.DefaultReadKey(clientLatestAckedMessageKey(s.clientID, topic))
 	if err != nil {
-		logger.Logger.Error("read topic last acked message id failed", zap.Error(err), zap.String("clientID", s.clientID))
+		logger.Logger.Error().Str("clientID", s.clientID).Err(err).Msg("read topic last acked message id failed")
 		return "", false
 	}
 	return id, true
@@ -105,15 +101,13 @@ func (s *Session) ReadTopicLatestPushedMessageID(topic string) (messageID string
 
 func (s *Session) SetTopicLatestPushedMessageID(topic string, messageID string) {
 	if err := s.store.DefaultPutKey(clientLatestAckedMessageKey(s.clientID, topic), messageID); err != nil {
-		logger.Logger.Error("set topic last acked message id failed", zap.Error(err), zap.String("clientID", s.clientID),
-			zap.String("topic", topic), zap.String("messageID", messageID))
+		logger.Logger.Error().Err(err).Str("clientID", s.clientID).Str("topic", topic).Str("messageID", messageID).Msg("set topic last acked message id failed")
 	}
 }
 
 func (s *Session) DeleteTopicLatestPushedMessageID(topic string, messageID string) {
 	if err := s.store.DefaultDeleteKey(clientLatestAckedMessageKey(s.clientID, topic)); err != nil {
-		logger.Logger.Error("delete topic last acked message id failed", zap.Error(err), zap.String("clientID", s.clientID),
-			zap.String("topic", topic), zap.String("messageID", messageID))
+		logger.Logger.Error().Err(err).Str("clientID", s.clientID).Str("topic", topic).Str("messageID", messageID).Msg("delete topic last acked message id failed")
 	}
 }
 
@@ -124,12 +118,11 @@ func (s *Session) CreateTopicUnFinishedMessage(topic string, message []*packet.M
 	for _, m := range message {
 		payload, err := json.Marshal(m)
 		if err != nil {
-			logger.Logger.Error("marshal unfinished message failed", zap.Error(err), zap.String("clientID", s.clientID))
+			logger.Logger.Error().Err(err).Str("clientID", s.clientID).Msg("marshal unfinished message failed")
 			continue
 		}
 		if err := s.store.DefaultPutKey(prefix+"/"+m.MessageID, string(payload)); err != nil {
-			logger.Logger.Error("create topic unfinished message failed", zap.Error(err), zap.String("clientID", s.clientID),
-				zap.String("topic", topic), zap.String("messageID", m.MessageID))
+			logger.Logger.Error().Err(err).Str("clientID", s.clientID).Str("topic", topic).Str("messageID", m.MessageID).Msg("create topic unfinished message failed")
 		}
 	}
 }
@@ -138,25 +131,33 @@ func (s *Session) ReadTopicUnFinishedMessage(topic string) (message []*packet.Me
 	prefix := clientUnfinishedMessageKey(s.clientID, topic)
 
 	m, err := s.store.DefaultReadPrefixKey(context.TODO(), prefix)
+	if errors.Is(err, errs.ErrStoreKeyNotFound) {
+		return nil
+	}
+
 	if err != nil {
-		logger.Logger.Error("read topic unfinished message failed", zap.Error(err), zap.String("clientID", s.clientID))
+		logger.Logger.Error().Err(err).Str("clientID", s.clientID).Msg("read topic unfinished message failed")
 		return
 	}
-	logger.Logger.Debug("read topic unfinished message", zap.Any("message", m))
+
 	for _, v := range m {
-		var m packet.Message
+		var m *packet.Message
 		if err := json.Unmarshal([]byte(v), &m); err != nil {
-			logger.Logger.Error("unmarshal unfinished message failed", zap.Error(err), zap.String("clientID", s.clientID))
+			logger.Logger.Error().Err(err).Str("clientID", s.clientID).Msg("unmarshal unfinished message failed")
 			continue
 		}
-		message = append(message, &m)
+		if m != nil {
+			message = append(message, m)
+		} else {
+			logger.Logger.Warn().Str("clientID", s.clientID).Str("topic", topic).Str("body", string(v)).Msg("json unmarshal message is nil")
+		}
 	}
 	return message
 }
 
 func (s *Session) DeleteTopicUnFinishedMessage(topic string, _ string) {
 	if err := s.store.DefaultDeleteKey(clientUnfinishedMessageKey(s.clientID, topic)); err != nil {
-		logger.Logger.Error("delete topic unfinished message failed", zap.Error(err), zap.String("clientID", s.clientID))
+		logger.Logger.Error().Str("clientID", s.clientID).Str("topic", topic).Msg("delete topic unfinished message failed")
 	}
 }
 
@@ -167,7 +168,7 @@ func (s *Session) GetWillMessage() (*session.WillMessage, bool, error) {
 	value, ok, err := s.store.DefaultReadKey(clientWillMessageKey(s.clientID))
 	if ok {
 		if err = json.Unmarshal([]byte(value), &message); err != nil {
-			logger.Logger.Error("unmarshal will message failed", zap.Error(err), zap.String("clientID", s.clientID))
+			logger.Logger.Error().Err(err).Str("clientID", s.clientID).Msg("unmarshal will message failed")
 		}
 	}
 
@@ -179,7 +180,7 @@ func (s *Session) SetWillMessage(message *session.WillMessage) error {
 	if jBody, err := json.Marshal(message); err != nil {
 		return err
 	} else {
-		logger.Logger.Debug("set will message", zap.String("clientID", s.clientID), zap.String("message", string(jBody)))
+		logger.Logger.Debug().Str("clientID", s.clientID).Msg("set will message")
 		return s.store.DefaultPutKey(clientWillMessageKey(s.clientID), string(jBody))
 	}
 }
@@ -196,14 +197,14 @@ func (s *Session) GetConnectProperties() (*session.ConnectProperties, error) {
 	)
 	value, ok, err := s.store.DefaultReadKey(clientConnectPropertiesKey(s.clientID))
 	if err != nil {
-		logger.Logger.Error("read connect properties failed", zap.Error(err), zap.String("clientID", s.clientID))
+		logger.Logger.Error().Err(err).Str("clientID", s.clientID).Msg("read connect properties failed")
 		return &properties, err
 	}
 	if !ok {
 		return &properties, errs.ErrSessionConnectPropertiesNotFound
 	}
 	if err := json.Unmarshal([]byte(value), &properties); err != nil {
-		logger.Logger.Error("unmarshal connect properties failed", zap.Error(err), zap.String("clientID", s.clientID))
+		logger.Logger.Error().Err(err).Str("clientID", s.clientID).Msg("unmarshal connect properties failed")
 		return &properties, err
 	}
 	return &properties, nil
@@ -212,11 +213,11 @@ func (s *Session) GetConnectProperties() (*session.ConnectProperties, error) {
 func (s *Session) SetConnectProperties(properties *session.ConnectProperties) error {
 	value, err := json.Marshal(properties)
 	if err != nil {
-		logger.Logger.Error("marshal connect properties failed", zap.Error(err), zap.String("clientID", s.clientID))
+		logger.Logger.Error().Err(err).Str("clientID", s.clientID).Msg("marshal connect properties failed")
 		return err
 	}
 	if err := s.store.DefaultPutKey(clientConnectPropertiesKey(s.clientID), string(value)); err != nil {
-		logger.Logger.Error("set connect properties failed", zap.Error(err), zap.String("clientID", s.clientID))
+		logger.Logger.Error().Err(err).Str("clientID", s.clientID).Msg("set connect properties failed")
 		return err
 	}
 	return nil

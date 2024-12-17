@@ -8,4 +8,9 @@ type StoreEventData struct {
 	Success   bool
 	Duration  time.Duration
 	Count     int
+	QoS       int
+}
+
+func (s *StoreEventData) name() {
+
 }

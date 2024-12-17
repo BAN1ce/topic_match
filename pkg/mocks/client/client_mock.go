@@ -152,18 +152,83 @@ func (mr *MockPacketWriterMockRecorder) NextPacketID() *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NextPacketID", reflect.TypeOf((*MockPacketWriter)(nil).NextPacketID))
 }
 
-// WritePacket mocks base method.
-func (m *MockPacketWriter) WritePacket(packet *client.WritePacket) error {
+// RetryWrite mocks base method.
+func (m *MockPacketWriter) RetryWrite(packet *client.WritePacket) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WritePacket", packet)
+	ret := m.ctrl.Call(m, "RetryWrite", packet)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// WritePacket indicates an expected call of WritePacket.
-func (mr *MockPacketWriterMockRecorder) WritePacket(packet interface{}) *gomock.Call {
+// RetryWrite indicates an expected call of RetryWrite.
+func (mr *MockPacketWriterMockRecorder) RetryWrite(packet interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WritePacket", reflect.TypeOf((*MockPacketWriter)(nil).WritePacket), packet)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryWrite", reflect.TypeOf((*MockPacketWriter)(nil).RetryWrite), packet)
+}
+
+// Write mocks base method.
+func (m *MockPacketWriter) Write(packet *client.WritePacket) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Write", packet)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Write indicates an expected call of Write.
+func (mr *MockPacketWriterMockRecorder) Write(packet interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Write", reflect.TypeOf((*MockPacketWriter)(nil).Write), packet)
+}
+
+// MockWriter is a mock of Writer interface.
+type MockWriter struct {
+	ctrl     *gomock.Controller
+	recorder *MockWriterMockRecorder
+}
+
+// MockWriterMockRecorder is the mock recorder for MockWriter.
+type MockWriterMockRecorder struct {
+	mock *MockWriter
+}
+
+// NewMockWriter creates a new mock instance.
+func NewMockWriter(ctrl *gomock.Controller) *MockWriter {
+	mock := &MockWriter{ctrl: ctrl}
+	mock.recorder = &MockWriterMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockWriter) EXPECT() *MockWriterMockRecorder {
+	return m.recorder
+}
+
+// RetryWrite mocks base method.
+func (m *MockWriter) RetryWrite(packet *client.WritePacket) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RetryWrite", packet)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RetryWrite indicates an expected call of RetryWrite.
+func (mr *MockWriterMockRecorder) RetryWrite(packet interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryWrite", reflect.TypeOf((*MockWriter)(nil).RetryWrite), packet)
+}
+
+// Write mocks base method.
+func (m *MockWriter) Write(packet *client.WritePacket) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Write", packet)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Write indicates an expected call of Write.
+func (mr *MockWriterMockRecorder) Write(packet interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Write", reflect.TypeOf((*MockWriter)(nil).Write), packet)
 }
 
 // MockClient is a mock of Client interface.
@@ -218,12 +283,11 @@ func (mr *MockClientMockRecorder) GetUnFinishedMessage() *gomock.Call {
 }
 
 // HandelPublishComp mocks base method.
-func (m *MockClient) HandelPublishComp(pubComp *packets.Pubcomp) (bool, error) {
+func (m *MockClient) HandelPublishComp(pubComp *packets.Pubcomp) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HandelPublishComp", pubComp)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // HandelPublishComp indicates an expected call of HandelPublishComp.
@@ -233,12 +297,11 @@ func (mr *MockClientMockRecorder) HandelPublishComp(pubComp interface{}) *gomock
 }
 
 // HandlePublishAck mocks base method.
-func (m *MockClient) HandlePublishAck(pubAck *packets.Puback) (bool, error) {
+func (m *MockClient) HandlePublishAck(pubAck *packets.Puback) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HandlePublishAck", pubAck)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // HandlePublishAck indicates an expected call of HandlePublishAck.
@@ -248,12 +311,11 @@ func (mr *MockClientMockRecorder) HandlePublishAck(pubAck interface{}) *gomock.C
 }
 
 // HandlePublishRec mocks base method.
-func (m *MockClient) HandlePublishRec(pubRec *packets.Pubrec) (bool, error) {
+func (m *MockClient) HandlePublishRec(pubRec *packets.Pubrec) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HandlePublishRec", pubRec)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // HandlePublishRec indicates an expected call of HandlePublishRec.
@@ -314,12 +376,11 @@ func (m *MockHandlePublishResponse) EXPECT() *MockHandlePublishResponseMockRecor
 }
 
 // HandelPublishComp mocks base method.
-func (m *MockHandlePublishResponse) HandelPublishComp(pubComp *packets.Pubcomp) (bool, error) {
+func (m *MockHandlePublishResponse) HandelPublishComp(pubComp *packets.Pubcomp) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HandelPublishComp", pubComp)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // HandelPublishComp indicates an expected call of HandelPublishComp.
@@ -329,12 +390,11 @@ func (mr *MockHandlePublishResponseMockRecorder) HandelPublishComp(pubComp inter
 }
 
 // HandlePublishAck mocks base method.
-func (m *MockHandlePublishResponse) HandlePublishAck(pubAck *packets.Puback) (bool, error) {
+func (m *MockHandlePublishResponse) HandlePublishAck(pubAck *packets.Puback) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HandlePublishAck", pubAck)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // HandlePublishAck indicates an expected call of HandlePublishAck.
@@ -344,12 +404,11 @@ func (mr *MockHandlePublishResponseMockRecorder) HandlePublishAck(pubAck interfa
 }
 
 // HandlePublishRec mocks base method.
-func (m *MockHandlePublishResponse) HandlePublishRec(pubRec *packets.Pubrec) (bool, error) {
+func (m *MockHandlePublishResponse) HandlePublishRec(pubRec *packets.Pubrec) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "HandlePublishRec", pubRec)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
 // HandlePublishRec indicates an expected call of HandlePublishRec.

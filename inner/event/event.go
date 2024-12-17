@@ -7,6 +7,7 @@ import (
 
 type Driver interface {
 	AddListener(eventName string, listener events.Listener)
+	AddListenerOnce(eventName string, listener events.Listener)
 	RemoveListener(eventName string, listener events.Listener)
 	Emit(eventName string, args ...interface{})
 }
@@ -52,4 +53,8 @@ func (w *wrapperDriver) RemoveListener(eventName string, listener events.Listene
 
 func (w *wrapperDriver) Emit(eventName string, args ...interface{}) {
 	w.driver.Emit(eventName, args...)
+}
+
+func (w *wrapperDriver) AddListenerOnce(eventName string, listener events.Listener) {
+	w.driver.AddListenerOnce(eventName, listener)
 }

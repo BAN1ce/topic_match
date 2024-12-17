@@ -2,6 +2,7 @@ package share
 
 import (
 	"container/list"
+	"github.com/BAN1ce/skyTree/logger"
 	"github.com/BAN1ce/skyTree/pkg/packet"
 	"sync"
 )
@@ -31,6 +32,7 @@ func (t *Queue) AppendMessage(message []*packet.Message) {
 	defer t.mux.Unlock()
 
 	for i := 0; i < len(message); i++ {
+		logger.Logger.Debug().Str("message_id", string(message[i].PublishPacket.Payload)).Msg("append message to queue")
 		t.queue.PushBack(message[i])
 	}
 }

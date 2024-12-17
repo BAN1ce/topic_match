@@ -30,13 +30,17 @@ type TopicMessageStore interface {
 	ReadTopicMessagesByID(ctx context.Context, topic, id string, limit int, include bool) ([]*packet.Message, error)
 	CreatePacket(topic string, value []byte) (id string, err error)
 	DeleteTopicMessageID(ctx context.Context, topic, messageID string) error
+	DeleteBeforeTime(ctx context.Context, topic string, time time.Time, limit int) error
+	Topics(start, limit int) []string
+	TopicMessageTotal(ctx context.Context, topic string) (int, error)
+	ReadTopicMessage(ctx context.Context, topic string, start, limit int) ([]*packet.Message, error)
 }
 
-// Encode publish packet to bytes
+// Encode the publication packet to bytes
 func Encode(version serializer.SerialVersion, publish *packet.Message, buf *bytes.Buffer) error {
-	if serializer, ok := storeSerializerFactory[version]; ok {
+	if storeSerializer, ok := storeSerializerFactory[version]; ok {
 		buf.WriteByte(version)
-		return serializer.Encode(publish, buf)
+		return storeSerializer.Encode(publish, buf)
 	} else {
 		return errs.ErrStoreVersionInvalid
 	}

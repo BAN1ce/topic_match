@@ -7,6 +7,7 @@ import (
 	"github.com/BAN1ce/skyTree/pkg/pool"
 	"github.com/eclipse/paho.golang/packets"
 	"google.golang.org/protobuf/proto"
+	"time"
 )
 
 const ProtoBufVersion = SerialVersion(iota + 1)
@@ -17,33 +18,23 @@ type ProtoBufSerializer struct {
 func (p *ProtoBufSerializer) Encode(pub *packet.Message, buf *bytes.Buffer) error {
 	var (
 		pubBuf       = pool.ByteBufferPool.Get()
-		pubRelBuf    = pool.ByteBufferPool.Get()
 		protoMessage = packet.StorePublishMessage{
 			MessageID:   pub.MessageID,
-			PubReceived: pub.IsPubReceived(),
-			FromSession: pub.IsFromSession(),
-			TimeStamp:   pub.Timestamp,
+			CreatedTime: time.Now().Unix(),
 			ExpiredTime: pub.ExpiredTime,
-			Will:        pub.IsWill(),
-			ClientID:    pub.ClientID,
+			SenderID:    pub.SendClientID,
 		}
 	)
 	defer func() {
 		pool.ByteBufferPool.Put(pubBuf)
-		pool.ByteBufferPool.Put(pubRelBuf)
 	}()
+
 	if pub.PublishPacket != nil {
 		if _, err := pub.PublishPacket.WriteTo(pubBuf); err != nil {
 			return err
 		}
 	}
-	if pub.PubRelPacket != nil {
-		if _, err := pub.PubRelPacket.WriteTo(pubRelBuf); err != nil {
-			return err
-		}
-	}
 
-	protoMessage.PubRelPacket = pubRelBuf.Bytes()
 	protoMessage.PublishPacket = pubBuf.Bytes()
 	pbBody, err := proto.Marshal(&protoMessage)
 	if err != nil {
@@ -69,17 +60,27 @@ func (p *ProtoBufSerializer) Decode(rawData []byte) (*packet.Message, error) {
 	}
 	bf.Write(protoMessage.PublishPacket)
 
-	if ctl, err := packets.ReadPacket(bf); err != nil {
+	ctl, err := packets.ReadPacket(bf)
+	if err != nil {
 		return nil, err
+	}
+
+	if ctl.Content == nil {
+		return nil, fmt.Errorf("empty content")
+	}
+
+	if pub, ok := ctl.Content.(*packets.Publish); !ok {
+		return nil, fmt.Errorf("invalid content")
 	} else {
+
 		return &packet.Message{
-			ClientID:      protoMessage.ClientID,
+			SendClientID:  protoMessage.SenderID,
 			MessageID:     protoMessage.MessageID,
-			PublishPacket: ctl.Content.(*packets.Publish),
+			PublishPacket: pub,
 			PubReceived:   protoMessage.PubReceived,
-			Timestamp:     protoMessage.TimeStamp,
+			CreatedTime:   protoMessage.CreatedTime,
 			ExpiredTime:   protoMessage.ExpiredTime,
-			Will:          protoMessage.Will,
 		}, nil
 	}
+
 }

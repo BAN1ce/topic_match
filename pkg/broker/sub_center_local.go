@@ -1,20 +1,23 @@
 package broker
 
 import (
-	"github.com/BAN1ce/Tree/inner/api"
-	"github.com/BAN1ce/Tree/inner/store"
+	"context"
+	"github.com/BAN1ce/Tree/app"
+	"github.com/BAN1ce/Tree/inner/api/request"
+	"github.com/BAN1ce/Tree/inner/core"
 	"github.com/BAN1ce/Tree/proto"
 	"github.com/BAN1ce/skyTree/pkg/utils"
 	"github.com/eclipse/paho.golang/packets"
 )
 
 type LocalSubCenter struct {
-	state *store.State
+	state *core.Core
 }
 
 func NewLocalSubCenter() *LocalSubCenter {
+	newApp := app.NewApp()
 	return &LocalSubCenter{
-		state: store.NewState(),
+		state: newApp.State,
 	}
 }
 func (l *LocalSubCenter) CreateSub(clientID string, topics []packets.SubOptions) error {
@@ -38,35 +41,27 @@ func (l *LocalSubCenter) CreateSub(clientID string, topics []packets.SubOptions)
 		topicsRequest[opt.Topic] = subOption
 	}
 
-	_, err := l.state.HandleSubRequest(&proto.SubRequest{
+	l.state.HandleSubRequest(&proto.SubRequest{
 		Topics:   topicsRequest,
 		ClientID: clientID,
 	})
-	return err
+	return nil
 }
 
 func (l *LocalSubCenter) DeleteSub(clientID string, topics []string) error {
-	_, err := l.state.HandleUnSubRequest(&proto.UnSubRequest{
+	l.state.HandleUnSubRequest(&proto.UnSubRequest{
 		Topics:   topics,
 		ClientID: clientID,
 	})
-	return err
+	return nil
 }
 
 func (l *LocalSubCenter) Match(topic string) (clientIDQos map[string]int32) {
-	rsp := l.state.MatchTopic(&api.MatchTopicRequest{
-		Topic: topic,
-	})
-
-	clientIDQos = map[string]int32{}
-	for _, client := range rsp.Client {
-		clientIDQos[client.ClientID] = client.QoS
-	}
-	return
+	panic("implement me")
 }
 
-func (l *LocalSubCenter) MatchTopic(topic string) (topics map[string]int32) {
-	rsp := l.state.MatchSubTopics(&api.MatchSubTopicRequest{
+func (l *LocalSubCenter) GetAllMatchTopics(topic string) (topics map[string]int32) {
+	rsp := l.state.GetAllMatchTopics(context.TODO(), &request.GetAllMatchTopicsRequest{
 		Topic: topic,
 	})
 	return rsp.Topic
@@ -75,4 +70,11 @@ func (l *LocalSubCenter) MatchTopic(topic string) (topics map[string]int32) {
 func (l *LocalSubCenter) DeleteClient(clientID string) error {
 	//TODO implement me
 	panic("implement me")
+}
+
+func (l *LocalSubCenter) GetMatchTopicForWildcardTopic(wildTopic string) []string {
+	response := l.state.GetMatchTopicForWildcardTopic(context.TODO(), &request.GetAllMatchTopicsForWildTopicRequest{
+		Topic: wildTopic,
+	})
+	return response.Topic
 }

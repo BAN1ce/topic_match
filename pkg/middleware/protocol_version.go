@@ -14,13 +14,13 @@ type ProtocolVersion struct {
 func (p *ProtocolVersion) Handle(client *client.Client, packet *packets.ControlPacket) error {
 	con, ok := packet.Content.(*packets.Connect)
 	if !ok {
-		logger.Logger.Error("packet content is not connect")
+		logger.Logger.Error().Msg("packet content is not connect")
 		return nil
 	}
 	if con.ProtocolVersion != 0x05 || con.ProtocolName != `MQTT` {
 		connAck := packets.NewControlPacket(packets.CONNACK).Content.(*packets.Connack)
 		connAck.ReasonCode = packets.ConnackProtocolError
-		client.WritePacket(&client2.WritePacket{
+		client.Write(&client2.WritePacket{
 			Packet: connAck,
 		})
 		return errs.ErrProtocolNotSupport

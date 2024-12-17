@@ -14,7 +14,7 @@ func (o *OnceConnect) Handle(c *client.Client, packet *packets.ControlPacket) er
 	if c.IsState(client.ReceivedConnect) {
 		disconnect := packets.NewControlPacket(packets.DISCONNECT).Content.(*packets.Disconnect)
 		disconnect.ReasonCode = packets.ConnackProtocolError
-		c.WritePacket(&client2.WritePacket{
+		c.Write(&client2.WritePacket{
 			Packet: disconnect,
 		})
 		return errs.ErrConnectPacketDuplicate

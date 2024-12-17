@@ -32,7 +32,7 @@ type TopicManager interface {
 
 	TopicLatestPushedMessage
 
-	ReadSubTopics() (topics []topic.Meta)
+	ReadSubTopics() (topics []*topic.Meta)
 	CreateSubTopic(meta *topic.Meta)
 	DeleteSubTopic(topic string)
 }

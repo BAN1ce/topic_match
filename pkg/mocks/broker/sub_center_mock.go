@@ -127,6 +127,34 @@ func (mr *MockSubCenterMockRecorder) DeleteSub(clientID, topics interface{}) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteSub", reflect.TypeOf((*MockSubCenter)(nil).DeleteSub), clientID, topics)
 }
 
+// GetAllMatchTopics mocks base method.
+func (m *MockSubCenter) GetAllMatchTopics(topic string) map[string]int32 {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllMatchTopics", topic)
+	ret0, _ := ret[0].(map[string]int32)
+	return ret0
+}
+
+// GetAllMatchTopics indicates an expected call of GetAllMatchTopics.
+func (mr *MockSubCenterMockRecorder) GetAllMatchTopics(topic interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllMatchTopics", reflect.TypeOf((*MockSubCenter)(nil).GetAllMatchTopics), topic)
+}
+
+// GetMatchTopicForWildcardTopic mocks base method.
+func (m *MockSubCenter) GetMatchTopicForWildcardTopic(wildTopic string) []string {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMatchTopicForWildcardTopic", wildTopic)
+	ret0, _ := ret[0].([]string)
+	return ret0
+}
+
+// GetMatchTopicForWildcardTopic indicates an expected call of GetMatchTopicForWildcardTopic.
+func (mr *MockSubCenterMockRecorder) GetMatchTopicForWildcardTopic(wildTopic interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMatchTopicForWildcardTopic", reflect.TypeOf((*MockSubCenter)(nil).GetMatchTopicForWildcardTopic), wildTopic)
+}
+
 // Match mocks base method.
 func (m *MockSubCenter) Match(topic string) map[string]int32 {
 	m.ctrl.T.Helper()
@@ -139,18 +167,4 @@ func (m *MockSubCenter) Match(topic string) map[string]int32 {
 func (mr *MockSubCenterMockRecorder) Match(topic interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Match", reflect.TypeOf((*MockSubCenter)(nil).Match), topic)
-}
-
-// MatchTopic mocks base method.
-func (m *MockSubCenter) MatchTopic(topic string) map[string]int32 {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MatchTopic", topic)
-	ret0, _ := ret[0].(map[string]int32)
-	return ret0
-}
-
-// MatchTopic indicates an expected call of MatchTopic.
-func (mr *MockSubCenterMockRecorder) MatchTopic(topic interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MatchTopic", reflect.TypeOf((*MockSubCenter)(nil).MatchTopic), topic)
 }

@@ -4,6 +4,8 @@ import (
 	"github.com/BAN1ce/skyTree/inner/broker/client"
 	"github.com/BAN1ce/skyTree/inner/broker/state"
 	"github.com/BAN1ce/skyTree/inner/broker/store/message"
+	"github.com/BAN1ce/skyTree/inner/broker/will"
+	"github.com/BAN1ce/skyTree/inner/event"
 	"github.com/BAN1ce/skyTree/inner/facade"
 	"github.com/BAN1ce/skyTree/pkg/broker"
 	"github.com/BAN1ce/skyTree/pkg/broker/plugin"
@@ -18,6 +20,11 @@ type Options struct {
 
 type Option func(*Broker)
 
+func WithEvent(driver event.Driver) Option {
+	return func(core *Broker) {
+		core.event = driver
+	}
+}
 func WithUserAuth(auth middleware.UserAuth) Option {
 	return func(core *Broker) {
 		core.userAuth = auth
@@ -88,5 +95,10 @@ func WithRetainStore(retain retain.Retain) Option {
 	return func(b *Broker) {
 		b.retain = retain
 	}
+}
 
+func WithWillMessageMonitor(monitor *will.MessageMonitor) Option {
+	return func(b *Broker) {
+		b.willMessageMonitor = monitor
+	}
 }

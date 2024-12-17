@@ -1,24 +1,24 @@
 package store
 
 import (
-	"context"
 	"github.com/BAN1ce/skyTree/inner/broker/share"
 	"github.com/BAN1ce/skyTree/pkg/broker"
 	"github.com/BAN1ce/skyTree/pkg/broker/message/serializer"
 )
 
 var (
-	DefaultMessageStore      broker.TopicMessageStore
-	DefaultMessageStoreEvent broker.MessageStoreEvent
+	DefaultMessageStore broker.TopicMessageStore
+
+	DefaultHandlePublishDoneEvent broker.HandlePublishDoneEvent
 
 	DefaultSerializerVersion serializer.SerialVersion
 
 	DefaultShareMessageStore *share.TopicMessageSourceFactory
 )
 
-func Boot(store broker.TopicMessageStore, event broker.MessageStoreEvent) {
+func SetDefault(store broker.TopicMessageStore, event broker.HandlePublishDoneEvent, serializerVersion serializer.SerialVersion) {
 	DefaultMessageStore = store
-	DefaultMessageStoreEvent = event
+	DefaultHandlePublishDoneEvent = event
 	DefaultSerializerVersion = serializer.ProtoBufVersion
-	DefaultShareMessageStore = share.NewTopicMessageSourceFactory(context.TODO(), store, event)
+	DefaultShareMessageStore = share.NewTopicMessageSourceFactory(store, event)
 }

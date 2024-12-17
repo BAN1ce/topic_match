@@ -13,13 +13,5 @@ func NewPublishRec() *PublishRec {
 }
 
 func (p *PublishRec) Handle(broker *Broker, client *client.Client, rawPacket *packets.ControlPacket) (err error) {
-	return nil
-	//var (
-	//	packet, ok = rawPacket.Content.(*packets.Pubrec)
-	//)
-	//if !ok {
-	//	logger.Logger.Error("convert to pubrec error")
-	//	return err
-	//}
-	//return err
+	return err
 }

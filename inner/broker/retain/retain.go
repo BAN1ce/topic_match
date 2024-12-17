@@ -4,7 +4,6 @@ import (
 	"github.com/BAN1ce/skyTree/logger"
 	"github.com/BAN1ce/skyTree/pkg/broker/retain"
 	"github.com/BAN1ce/skyTree/pkg/broker/store"
-	"go.uber.org/zap"
 	"time"
 )
 
@@ -17,16 +16,18 @@ func NewRetainDB(keyStore store.KeyStore) *DB {
 }
 
 func (d *DB) PutRetainMessage(message *retain.Message) error {
-	if len(message.Payload) == 0 {
-		return d.store.DefaultDeleteKey(store.GetTopicRetainKey(message.Topic))
-	}
+	logger.Logger.Debug().Str("topic", message.Topic).Str("body", string(message.Encode())).Msg("put retain message")
+	//if len(message.Payload) == 0 {
+	//	return d.store.DefaultDeleteKey(store.GetTopicRetainKey(message.Topic))
+	//}
+
 	return d.store.DefaultPutKey(store.GetTopicRetainKey(message.Topic), string(message.Encode()))
 }
 
 func (d *DB) GetRetainMessage(topic string) (*retain.Message, bool) {
 	data, ok, err := d.store.DefaultReadKey(store.GetTopicRetainKey(topic))
 	if err != nil {
-		logger.Logger.Error("get retain message failed", zap.Error(err), zap.String("topic", topic))
+		logger.Logger.Info().Err(err).Str("topic", topic).Msg("get retain message failed")
 		return nil, false
 	}
 	if !ok {
